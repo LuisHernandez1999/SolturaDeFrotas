@@ -5,13 +5,11 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  FlatList,
   SafeAreaView,
   StatusBar,
   PixelRatio,
@@ -20,11 +18,10 @@ import {
   Easing,
   ActivityIndicator,
   Modal,
-  TouchableWithoutFeedback,
   Pressable,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { useNavigation } from "@react-navigation/native"
+import { useFocusEffect } from "@react-navigation/native"
 
 // Função para calcular tamanhos responsivos baseados no tipo de dispositivo
 const getDeviceType = () => {
@@ -153,12 +150,12 @@ const TouchableArea = ({ onPress, style, children, hitSlop = { top: 15, bottom: 
         },
       ]}
       hitSlop={hitSlop}
-      android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+      android_ripple={{ color: "rgba(0, 0, 0, 0.1)", borderless: false }}
     >
       {children}
     </Pressable>
-  );
-};
+  )
+}
 
 // Ripple melhorado com resposta imediata ao toque
 const Ripple = ({ style, onPress, children }) => {
@@ -176,9 +173,9 @@ const Ripple = ({ style, onPress, children }) => {
       easing: Easing.out(Easing.ease),
       useNativeDriver: true, // Changed to true for better performance
     }).start()
-    
+
     // Execute onPress immediately for better responsiveness
-    if (onPress) onPress();
+    if (onPress) onPress()
   }
 
   const handlePressOut = () => {
@@ -206,7 +203,7 @@ const Ripple = ({ style, onPress, children }) => {
       style={[styles.rippleContainer, style]}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+      android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
     >
       {children}
       {rippleVisible && (
@@ -270,7 +267,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
     if (value) {
       const filtered = data.filter((item) => item.toLowerCase().includes(value.toLowerCase()))
       setFilteredData(filtered)
-      
+
       // Mantenha o dropdown aberto se houver dados filtrados
       if (filtered.length > 0 && isFocused) {
         setShowDropdown(true)
@@ -369,10 +366,10 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
 
   // Adiciona listener para cliques fora do dropdown
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      document.addEventListener('mousedown', handleOutsideClick)
+    if (Platform.OS === "web") {
+      document.addEventListener("mousedown", handleOutsideClick)
       return () => {
-        document.removeEventListener('mousedown', handleOutsideClick)
+        document.removeEventListener("mousedown", handleOutsideClick)
       }
     }
   }, [])
@@ -418,33 +415,27 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   // Renderização dos itens do dropdown sem usar FlatList
   const renderDropdownItems = () => {
     return filteredData.map((item, index) => (
-      <Pressable 
+      <Pressable
         key={index.toString()}
-        style={({ pressed }) => [
-          styles.dropdownItem,
-          pressed ? { backgroundColor: '#f0f0f0' } : {}
-        ]}
+        style={({ pressed }) => [styles.dropdownItem, pressed ? { backgroundColor: "#f0f0f0" } : {}]}
         onPress={() => handleSelect(item)}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)' }}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)" }}
       >
         <Text style={styles.dropdownItemText}>{item}</Text>
       </Pressable>
-    ));
-  };
+    ))
+  }
 
   return (
-    <View 
-      ref={containerRef}
-      style={[styles.inputWrapper, { zIndex: showDropdown ? 100 : zIndex }]}
-    >
+    <View ref={containerRef} style={[styles.inputWrapper, { zIndex: showDropdown ? 100 : zIndex }]}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      
+
       {/* Usando Pressable para resposta imediata ao toque */}
-      <Pressable 
+      <Pressable
         ref={touchableRef}
-        style={{ width: '100%' }}
+        style={{ width: "100%" }}
         onPress={forceFocus}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Animated.View
@@ -458,7 +449,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
         >
           <TextInput
             ref={inputRef}
-            style={[styles.animatedInput, { pointerEvents: 'auto' }]}
+            style={[styles.animatedInput, { pointerEvents: "auto" }]}
             placeholder={isFocused ? placeholder : ""}
             placeholderTextColor="#999"
             value={value}
@@ -488,7 +479,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
           )}
         </Animated.View>
       </Pressable>
-      
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Dropdown que permanece aberto até o usuário selecionar um item */}
@@ -502,17 +493,13 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
             },
           ]}
         >
-          <ScrollView 
-            style={styles.dropdown}
-            keyboardShouldPersistTaps="always"
-            nestedScrollEnabled={true}
-          >
+          <ScrollView style={styles.dropdown} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
             {renderDropdownItems()}
           </ScrollView>
         </Animated.View>
       )}
     </View>
-  );
+  )
 }
 
 // ColetoresSelector reescrito para melhor resposta ao toque
@@ -560,7 +547,7 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
 
       setColetores([...coletores, coletor.trim()])
       setColetor("")
-      
+
       // Focus the input again after adding
       if (inputRef.current) {
         inputRef.current.focus()
@@ -612,11 +599,11 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      
-      <Pressable 
-        style={{ width: '100%' }}
+
+      <Pressable
+        style={{ width: "100%" }}
         onPress={forceFocus}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Animated.View
@@ -652,13 +639,13 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
             onPress={addColetor}
             disabled={coletores.length >= maxColetores}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
           >
             <Text style={[styles.addButtonText, { fontSize: normalize(20) }]}>+</Text>
           </Pressable>
         </Animated.View>
       </Pressable>
-      
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Animated.View style={[styles.coletoresList, { transform: [{ scale: scaleAnim }] }]}>
@@ -677,7 +664,7 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
               ]}
               onPress={() => removeColetor(index)}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
             >
               <Text style={styles.removeButtonText}>×</Text>
             </Pressable>
@@ -689,7 +676,7 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
         {coletores.length}/{maxColetores} coletores
       </Text>
     </View>
-  );
+  )
 }
 
 // CelularInput reescrito para melhor resposta ao toque
@@ -775,11 +762,11 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      
-      <Pressable 
-        style={{ width: '100%' }}
+
+      <Pressable
+        style={{ width: "100%" }}
         onPress={forceFocus}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Animated.View
@@ -805,10 +792,10 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
           />
         </Animated.View>
       </Pressable>
-      
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
-  );
+  )
 }
 
 // DateTimeSelector reescrito para melhor resposta ao toque
@@ -911,11 +898,11 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      
+
       <Pressable
-        style={{ width: '100%' }}
+        style={{ width: "100%" }}
         onPress={openDatePicker}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Animated.View
@@ -943,28 +930,18 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
           </View>
         </Animated.View>
       </Pressable>
-      
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {showDatePicker && (
-        <DateTimePicker
-          value={date || new Date()}
-          mode="date"
-          display="default"
-          onChange={onChangeDate}
-        />
+        <DateTimePicker value={date || new Date()} mode="date" display="default" onChange={onChangeDate} />
       )}
 
       {showTimePicker && (
-        <DateTimePicker
-          value={date || new Date()}
-          mode="time"
-          display="default"
-          onChange={onChangeTime}
-        />
+        <DateTimePicker value={date || new Date()} mode="time" display="default" onChange={onChangeTime} />
       )}
     </View>
-  );
+  )
 }
 
 // Componente de mensagem de sucesso
@@ -1033,10 +1010,10 @@ const SuccessMessage = ({ visible, onClose }) => {
           </View>
           <Text style={styles.successTitle}>Sucesso!</Text>
           <Text style={styles.successText}>Formulário enviado com sucesso!</Text>
-          <Pressable 
-            style={styles.successCloseButton} 
+          <Pressable
+            style={styles.successCloseButton}
             onPress={handleClose}
-            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
           >
             <Text style={styles.successCloseButtonText}>OK</Text>
           </Pressable>
@@ -1047,7 +1024,7 @@ const SuccessMessage = ({ visible, onClose }) => {
 }
 
 // Componente principal do formulário
-const Formulario = () => {
+const Formulario = ({ navigation }) => {
   // Estados para os campos do formulário
   const [motorista, setMotorista] = useState("")
   const [prefixo, setPrefixo] = useState("")
@@ -1063,8 +1040,42 @@ const Formulario = () => {
   const formScaleAnim = useRef(new Animated.Value(0.95)).current
   const formOpacityAnim = useRef(new Animated.Value(0)).current
 
-  // Navegação
-  const navigation = useNavigation()
+  // Múltiplas abordagens para ocultar o cabeçalho
+  useEffect(() => {
+    // Método 1: Usando setOptions
+    if (navigation && navigation.setOptions) {
+      navigation.setOptions({
+        headerShown: false,
+        header: () => null,
+        title: null,
+      })
+    }
+  }, [navigation])
+
+  // Método 2: Usando useFocusEffect para garantir que o cabeçalho seja ocultado quando a tela receber foco
+  useFocusEffect(
+    React.useCallback(() => {
+      if (navigation && navigation.setOptions) {
+        navigation.setOptions({
+          headerShown: false,
+          header: () => null,
+          title: null,
+        })
+      }
+
+      // Configurar a StatusBar corretamente
+      StatusBar.setBarStyle("light-content")
+      if (Platform.OS === "android") {
+        StatusBar.setTranslucent(true)
+        StatusBar.setBackgroundColor("transparent")
+        StatusBar.setHidden(false)
+      }
+
+      return () => {
+        // Restaurar configurações padrão ao sair da tela, se necessário
+      }
+    }, [navigation]),
+  )
 
   // Animação de entrada do formulário
   useEffect(() => {
@@ -1115,7 +1126,7 @@ const Formulario = () => {
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
-  
+
   const resetForm = () => {
     setMotorista("")
     setPrefixo("")
@@ -1339,20 +1350,22 @@ const Formulario = () => {
 
   return (
     <ActiveAutocompleteProvider>
-      <SafeAreaView style={styles.container}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <SafeAreaView style={styles.safeAreaContainer}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
         <View style={styles.backgroundContainer} />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardAvoidingView}
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
           <ScrollView
-            contentContainerStyle={[styles.scrollContent, { paddingVertical: getResponsiveSize(20) }]}
-            keyboardShouldPersistTaps="always" // Changed from "handled" to "always"
+            style={styles.scrollViewStyle}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="always"
             nestedScrollEnabled={true}
+            showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
               <Text style={[styles.headerTitle, { fontSize: normalize(24) }]}>Formulário de Coleta</Text>
@@ -1428,6 +1441,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
   },
+  safeAreaContainer: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    paddingTop: 0, // Remova o padding dinâmico
+  },
   backgroundContainer: {
     position: "absolute",
     left: 0,
@@ -1439,9 +1457,14 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
+  scrollViewStyle: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 15,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 30 : 15,
+    paddingBottom: 30, // Adicionar padding na parte inferior para evitar flickering
     alignItems: "center",
   },
   header: {
@@ -1764,3 +1787,4 @@ const styles = StyleSheet.create({
 })
 
 export default Formulario
+

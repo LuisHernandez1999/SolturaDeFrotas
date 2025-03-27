@@ -1,5 +1,7 @@
 "use client"
 
+import React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import {
   View,
@@ -19,7 +21,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+// Add useFocusEffect import
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 
 // Reutilizando as funções de responsividade do formulário
 const getDeviceType = () => {
@@ -175,7 +178,7 @@ const RippleButton = ({ onPress, style, textStyle, children, icon }) => {
   )
 }
 
-// Replace the entire Autocomplete component with this simplified version
+// Modify the Autocomplete component to fix the issue with typing and selecting collaborators
 const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, style, id }) => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -198,21 +201,26 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
   }
 
   const handleBlur = () => {
-    // Small delay to allow dropdown item selection
+    // Longer delay to allow dropdown item selection
     setTimeout(() => {
       setIsFocused(false)
       setShowDropdown(false)
-    }, 150)
+    }, 300)
   }
 
   const handleTextChange = (text) => {
     onChangeText(text)
+    // Show dropdown when typing
+    setShowDropdown(true)
   }
 
   const handleSelectItem = (item) => {
     onSelect(item)
-    setShowDropdown(false)
-    inputRef.current?.blur()
+    // Don't close dropdown immediately to prevent flickering
+    setTimeout(() => {
+      setShowDropdown(false)
+      inputRef.current?.blur()
+    }, 100)
   }
 
   // Get filtered options only when needed
@@ -238,6 +246,7 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
               onChangeText("")
               inputRef.current?.focus()
             }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.clearButtonText}>✕</Text>
           </TouchableOpacity>
@@ -251,6 +260,7 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
                 inputRef.current?.focus()
               }
             }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.dropdownIcon}>▼</Text>
           </TouchableOpacity>
@@ -259,12 +269,13 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
 
       {showDropdown && filteredOptions.length > 0 && (
         <View style={styles.dropdownList}>
-          <ScrollView nestedScrollEnabled={true} style={styles.dropdownScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView nestedScrollEnabled={true} style={styles.dropdownScroll} keyboardShouldPersistTaps="always">
             {filteredOptions.map((item, index) => (
               <TouchableOpacity
                 key={`${autocompleteId}-${index}`}
-                style={styles.dropdownItem}
+                style={[styles.dropdownItem, { paddingVertical: 12 }]}
                 onPress={() => handleSelectItem(item)}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.dropdownItemText, item === value && styles.dropdownItemTextSelected]}>{item}</Text>
               </TouchableOpacity>
@@ -276,7 +287,7 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
   )
 }
 
-// Componente para o modal de detalhes da rota com edição
+// Modify the RotaDetailModal component to fix the team modal
 const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
   const [fadeAnim] = useState(new Animated.Value(0))
   const [scaleAnim] = useState(new Animated.Value(0.9))
@@ -387,12 +398,12 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
   // Calcular altura máxima do modal com base na altura da tela
   const maxModalHeight = screenHeight * 0.8
 
-  // Função para adicionar um coletor
-  const addColetor = () => {
-    if (newColetor && !editedRota.coletores.includes(newColetor)) {
+  // Modify the addColetor function to handle selection better
+  const addColetor = (value) => {
+    if ((value || newColetor) && !editedRota.coletores.includes(value || newColetor)) {
       setEditedRota({
         ...editedRota,
-        coletores: [...editedRota.coletores, newColetor],
+        coletores: [...editedRota.coletores, value || newColetor],
       })
       setNewColetor("")
     }
@@ -569,15 +580,15 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
                       onChangeText={setNewColetor}
                       onSelect={(value) => {
                         addColetor(value)
-                        setNewColetor("")
                       }}
                       placeholder="Adicionar coletor"
                       style={styles.coletorAutocomplete}
                     />
                     <TouchableOpacity
                       style={styles.addColetorButton}
-                      onPress={addColetor}
+                      onPress={() => addColetor()}
                       disabled={!newColetor || editedRota.coletores.includes(newColetor)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text style={styles.addColetorButtonText}>+</Text>
                     </TouchableOpacity>
@@ -672,6 +683,7 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
   )
 }
 
+// Modify the HistoricoSoltura component to remove the native header and fix navigation
 export default function HistoricoSoltura() {
   const navigation = useNavigation()
   const [selectedRota, setSelectedRota] = useState(null)
@@ -780,9 +792,34 @@ export default function HistoricoSoltura() {
     setModalVisible(false)
   }
 
-  // Função para navegar para o formulário
+  // Add useFocusEffect to remove the native header
+  useFocusEffect(
+    React.useCallback(() => {
+      if (navigation && navigation.setOptions) {
+        navigation.setOptions({
+          headerShown: false,
+          header: () => null,
+          title: null,
+        })
+      }
+
+      // Configure StatusBar correctly
+      StatusBar.setBarStyle("dark-content")
+      if (Platform.OS === "android") {
+        StatusBar.setTranslucent(true)
+        StatusBar.setBackgroundColor("transparent")
+        StatusBar.setHidden(false)
+      }
+
+      return () => {
+        // Restore default settings when leaving the screen, if needed
+      }
+    }, [navigation]),
+  )
+
+  // Fix the navigation function
   const navigateToFormulario = () => {
-    navigation.navigate("formulario/formulario")
+    navigation.navigate("Formulario")
   }
 
   // Renderização adaptativa para telas pequenas
@@ -961,6 +998,7 @@ export default function HistoricoSoltura() {
   )
 }
 
+// Adicionar estilos para prevenir flickering e melhorar a interação com o modal
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -975,6 +1013,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
+    zIndex: 10,
   },
   header: {
     width: "100%",
@@ -1170,6 +1209,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flexGrow: 0,
+    maxHeight: "70%", // Ensure modal content doesn't overflow
   },
   modalContentContainer: {
     padding: 20,
@@ -1208,6 +1248,7 @@ const styles = StyleSheet.create({
   },
   coletoresList: {
     marginTop: 5,
+    zIndex: 1,
   },
   coletorItem: {
     backgroundColor: "#f5f5f5",
@@ -1298,6 +1339,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 5,
+    zIndex: 20,
   },
   clearButtonText: {
     fontSize: normalize(16),
@@ -1306,6 +1348,7 @@ const styles = StyleSheet.create({
   },
   dropdownIconButton: {
     padding: 5,
+    zIndex: 20,
   },
   dropdownIcon: {
     fontSize: normalize(12),
@@ -1313,14 +1356,14 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     position: "absolute",
-    top: 42, // Just below the input
+    top: 42,
     left: 0,
     right: 0,
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    maxHeight: 150,
+    maxHeight: 200, // Increased height for better visibility
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -1328,13 +1371,11 @@ const styles = StyleSheet.create({
     elevation: 10,
     zIndex: 999,
   },
-  dropdownScroll: {
-    maxHeight: 150,
-  },
   dropdownItem: {
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    zIndex: 1000,
   },
   dropdownItemText: {
     fontSize: normalize(14),
@@ -1353,6 +1394,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
     zIndex: 100,
+    position: "relative",
   },
   coletorAutocomplete: {
     flex: 1,
@@ -1366,6 +1408,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 101, // Higher than autocomplete
   },
   addColetorButtonText: {
     color: "white",
@@ -1380,6 +1423,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 10,
+    zIndex: 20,
   },
   removeColetorButtonText: {
     color: "white",

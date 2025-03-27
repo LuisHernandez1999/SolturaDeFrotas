@@ -21,7 +21,7 @@ import {
   BackHandler,
   ActivityIndicator,
 } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useFocusEffect } from "@react-navigation/native"
 import { cadastrarUser } from "../api/cadastrar" // Import the API function
 
 // Função para calcular tamanhos responsivos de forma mais precisa
@@ -201,6 +201,66 @@ const logoStyles = StyleSheet.create({
   },
 })
 
+// Componente de barra de força de senha
+const PasswordStrengthBar = ({ password }) => {
+  // Calcular a força da senha
+  const calculateStrength = (pass) => {
+    if (!pass) return 0
+
+    let strength = 0
+
+    // Comprimento mínimo
+    if (pass.length >= 6) strength += 1
+    if (pass.length >= 8) strength += 1
+
+    // Complexidade
+    if (/[A-Z]/.test(pass)) strength += 1 // Maiúsculas
+    if (/[0-9]/.test(pass)) strength += 1 // Números
+    if (/[^A-Za-z0-9]/.test(pass)) strength += 1 // Caracteres especiais
+
+    return Math.min(strength, 5) // Máximo de 5
+  }
+
+  const strength = calculateStrength(password)
+  const percentage = (strength / 5) * 100
+
+  // Determinar a cor baseada na força
+  const getColor = () => {
+    if (strength <= 1) return "#FF5252" // Vermelho
+    if (strength <= 2) return "#FFA000" // Laranja
+    if (strength <= 3) return "#FFC107" // Amarelo
+    if (strength <= 4) return "#AED581" // Verde claro
+    return "#8BC34A" // Verde
+  }
+
+  // Determinar o texto baseado na força
+  const getStrengthText = () => {
+    if (!password) return ""
+    if (strength <= 1) return "Muito fraca"
+    if (strength <= 2) return "Fraca"
+    if (strength <= 3) return "Média"
+    if (strength <= 4) return "Boa"
+    return "Forte"
+  }
+
+  return (
+    <View style={styles.strengthBarContainer}>
+      <View style={styles.strengthBarWrapper}>
+        <View
+          style={[
+            styles.strengthBarFill,
+            {
+              width: `${percentage}%`,
+              backgroundColor: getColor(),
+            },
+          ]}
+        />
+      </View>
+      {password ? <Text style={[styles.strengthText, { color: getColor() }]}>{getStrengthText()}</Text> : null}
+    </View>
+  )
+}
+
 // Componente de campo de entrada personalizado com melhor responsividade
 const InputField = ({
   label,
@@ -211,8 +271,10 @@ const InputField = ({
   keyboardType,
   error,
   autoCapitalize = "none",
+  showPasswordStrength = false,
 }) => {
   const { height, width } = useWindowDimensions()
+  const [showPassword, setShowPassword] = useState(false)
 
   // Ajustar tamanho do input baseado na orientação da tela
   const inputHeight = height > width ? height * 0.065 : height * 0.08
@@ -229,13 +291,25 @@ const InputField = ({
           style={[styles.input, { fontSize: fontSize }]}
           placeholder={placeholder}
           placeholderTextColor="#999"
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
           value={value}
           onChangeText={onChangeText}
           autoCapitalize={autoCapitalize}
         />
+        {secureTextEntry && (
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.eyeIconText}>{showPassword ? "👁️" : "👁️‍🗨️"}</Text>
+            <Text style={styles.eyeIconLabel}>{showPassword ? "Ocultar" : "Mostrar"}</Text>
+          </TouchableOpacity>
+        )}
       </View>
+      {showPasswordStrength && <PasswordStrengthBar password={value} />}
     </View>
   )
 }
@@ -260,7 +334,7 @@ const formatPhoneNumber = (text) => {
   return formatted
 }
 
-export default function RegisterScreen() {
+export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
@@ -278,8 +352,42 @@ export default function RegisterScreen() {
     api: "",
   })
 
-  // Navegação
-  const navigation = useNavigation()
+  // Múltiplas abordagens para ocultar o cabeçalho
+  useEffect(() => {
+    // Método 1: Usando setOptions
+    if (navigation && navigation.setOptions) {
+      navigation.setOptions({
+        headerShown: false,
+        header: () => null,
+        title: null,
+      })
+    }
+  }, [navigation])
+
+  // Método 2: Usando useFocusEffect para garantir que o cabeçalho seja ocultado quando a tela receber foco
+  useFocusEffect(
+    React.useCallback(() => {
+      if (navigation && navigation.setOptions) {
+        navigation.setOptions({
+          headerShown: false,
+          header: () => null,
+          title: null,
+        })
+      }
+
+      // Ocultar a barra de status ou torná-la transparente
+      StatusBar.setBarStyle("light-content")
+      if (Platform.OS === "android") {
+        StatusBar.setTranslucent(true)
+        StatusBar.setBackgroundColor("transparent")
+        StatusBar.setHidden(false)
+      }
+
+      return () => {
+        // Restaurar configurações padrão ao sair da tela, se necessário
+      }
+    }, [navigation]),
+  )
 
   // Função para voltar à tela de login
   const goBackToLogin = () => {
@@ -505,7 +613,7 @@ export default function RegisterScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeAreaContainer}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       {/* Fundo verde */}
@@ -518,14 +626,7 @@ export default function RegisterScreen() {
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              {
-                paddingTop: height * 0.03,
-                paddingBottom: height * 0.05,
-                paddingHorizontal: width * 0.05,
-              },
-            ]}
+            contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -537,139 +638,134 @@ export default function RegisterScreen() {
                 styles.formContainer,
                 {
                   width: isLandscape ? width * 0.7 : width > 500 ? 450 : width * 0.9,
-                  padding: width * 0.05,
-                  marginTop: isSmallDevice ? height * 0.01 : height * 0.02,
+                  marginTop: isSmallDevice ? height * 0.02 : height * 0.04,
                 },
               ]}
             >
-              <Text
-                style={[
-                  styles.formTitle,
-                  {
-                    fontSize: normalize(isSmallDevice ? 20 : 22),
-                    marginBottom: isSmallDevice ? height * 0.015 : height * 0.02,
-                  },
-                ]}
-              >
-                Criar Conta
-              </Text>
-
-              {/* Erro da API */}
-              {errors.api ? (
-                <View style={styles.apiErrorContainer}>
-                  <Text style={styles.apiErrorText}>{errors.api}</Text>
-                </View>
-              ) : null}
-
-              {/* Campos do formulário */}
-              <InputField
-                label="Nome Completo"
-                placeholder="Digite seu nome completo"
-                value={name}
-                onChangeText={setName}
-                error={errors.name}
-                autoCapitalize="words"
-              />
-
-              <InputField
-                label="Celular"
-                placeholder="(XX) XXXXX-XXXX"
-                value={phone}
-                onChangeText={handlePhoneChange}
-                keyboardType="phone-pad"
-                error={errors.phone}
-              />
-
-              <InputField
-                label="Senha"
-                placeholder="Crie uma senha"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                error={errors.password}
-              />
-
-              <InputField
-                label="Confirmar Senha"
-                placeholder="Confirme sua senha"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={true}
-                error={errors.confirmPassword}
-              />
-
-              {/* Checkbox de termos e condições */}
-              <View
-                style={[
-                  styles.termsContainer,
-                  {
-                    marginVertical: isSmallDevice ? height * 0.01 : height * 0.015,
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.checkbox}
-                  onPress={() => setAcceptTerms(!acceptTerms)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <View style={[styles.checkboxInner, acceptTerms ? styles.checkboxChecked : {}]}>
-                    {acceptTerms && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.termsTextContainer}>
-                  <Text
-                    style={[
-                      styles.termsText,
-                      {
-                        fontSize: normalize(isSmallDevice ? 12 : 13),
-                        lineHeight: normalize(isSmallDevice ? 16 : 18),
-                      },
-                    ]}
-                  >
-                    Eu aceito os <Text style={styles.termsLink}>Termos de Uso</Text> e{" "}
-                    <Text style={styles.termsLink}>Política de Privacidade</Text>
-                  </Text>
-                  {errors.terms ? <Text style={styles.errorText}>{errors.terms}</Text> : null}
-                </View>
+              {/* Cabeçalho verde com título branco */}
+              <View style={styles.formHeader}>
+                <Text style={styles.formHeaderText}>Cadastro</Text>
               </View>
 
-              {/* Botão de cadastro */}
-              <TouchableOpacity
-                style={[
-                  styles.registerButton,
-                  {
-                    height: isSmallDevice ? height * 0.06 : height * 0.065,
-                    marginTop: isSmallDevice ? height * 0.01 : height * 0.02,
-                  },
-                  isLoading ? styles.disabledButton : {},
-                ]}
-                activeOpacity={0.8}
-                onPress={handleRegister}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <Text style={[styles.registerButtonText, { fontSize: normalize(16) }]}>CADASTRAR</Text>
-                )}
-              </TouchableOpacity>
+              <View style={styles.formContent}>
+                {/* Erro da API */}
+                {errors.api ? (
+                  <View style={styles.apiErrorContainer}>
+                    <Text style={styles.apiErrorText}>{errors.api}</Text>
+                  </View>
+                ) : null}
 
-              {/* Botão para voltar ao login */}
-              <TouchableOpacity
-                style={[
-                  styles.backButton,
-                  {
-                    marginTop: isSmallDevice ? height * 0.015 : height * 0.02,
-                    padding: isSmallDevice ? 8 : 10,
-                  },
-                ]}
-                onPress={goBackToLogin}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                disabled={isLoading}
-              >
-                <Text style={[styles.backButtonText, { fontSize: normalize(14) }]}>Já tem uma conta? Faça login</Text>
-              </TouchableOpacity>
+                {/* Campos do formulário */}
+                <InputField
+                  label="Nome Completo"
+                  placeholder="Digite seu nome completo"
+                  value={name}
+                  onChangeText={setName}
+                  error={errors.name}
+                  autoCapitalize="words"
+                />
+
+                <InputField
+                  label="Celular"
+                  placeholder="(XX) XXXXX-XXXX"
+                  value={phone}
+                  onChangeText={handlePhoneChange}
+                  keyboardType="phone-pad"
+                  error={errors.phone}
+                />
+
+                <InputField
+                  label="Senha"
+                  placeholder="Crie uma senha"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={true}
+                  error={errors.password}
+                  showPasswordStrength={true}
+                />
+
+                <InputField
+                  label="Confirmar Senha"
+                  placeholder="Confirme sua senha"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={true}
+                  error={errors.confirmPassword}
+                />
+
+                {/* Checkbox de termos e condições */}
+                <View
+                  style={[
+                    styles.termsContainer,
+                    {
+                      marginVertical: isSmallDevice ? height * 0.01 : height * 0.015,
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    style={styles.checkbox}
+                    onPress={() => setAcceptTerms(!acceptTerms)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <View style={[styles.checkboxInner, acceptTerms ? styles.checkboxChecked : {}]}>
+                      {acceptTerms && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.termsTextContainer}>
+                    <Text
+                      style={[
+                        styles.termsText,
+                        {
+                          fontSize: normalize(isSmallDevice ? 12 : 13),
+                          lineHeight: normalize(isSmallDevice ? 16 : 18),
+                        },
+                      ]}
+                    >
+                      Eu aceito os <Text style={styles.termsLink}>Termos de Uso</Text> e{" "}
+                      <Text style={styles.termsLink}>Política de Privacidade</Text>
+                    </Text>
+                    {errors.terms ? <Text style={styles.errorText}>{errors.terms}</Text> : null}
+                  </View>
+                </View>
+
+                {/* Botão de cadastro */}
+                <TouchableOpacity
+                  style={[
+                    styles.registerButton,
+                    {
+                      height: isSmallDevice ? height * 0.06 : height * 0.065,
+                      marginTop: isSmallDevice ? height * 0.01 : height * 0.02,
+                    },
+                    isLoading ? styles.disabledButton : {},
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={[styles.registerButtonText, { fontSize: normalize(16) }]}>CADASTRAR</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Botão para voltar ao login */}
+                <TouchableOpacity
+                  style={[
+                    styles.backButton,
+                    {
+                      marginTop: isSmallDevice ? height * 0.015 : height * 0.02,
+                      padding: isSmallDevice ? 8 : 10,
+                    },
+                  ]}
+                  onPress={goBackToLogin}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  disabled={isLoading}
+                >
+                  <Text style={[styles.backButtonText, { fontSize: normalize(14) }]}>Já tem uma conta? Faça login</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {!isSmallDevice && (
@@ -687,6 +783,11 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  safeAreaContainer: {
+    flex: 1,
+    backgroundColor: "#8BC34A", // Garante que a área segura tenha a mesma cor de fundo
+    paddingTop: 0, // Remova o padding dinâmico
+  },
   container: {
     flex: 1,
   },
@@ -707,9 +808,12 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 30 : 15,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   formContainer: {
-    backgroundColor: "white",
+    backgroundColor: "#f5f5f5", // Cor de fundo alterada para cinza claro
     borderRadius: 20,
     alignSelf: "center",
     shadowColor: "#000",
@@ -717,11 +821,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+    overflow: "hidden", // Para garantir que o cabeçalho verde respeite o border radius
   },
-  formTitle: {
+  // Cabeçalho verde
+  formHeader: {
+    backgroundColor: "#8BC34A", // Mesmo tom de verde do background
+    paddingVertical: 20,
+    alignItems: "center",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  formHeaderText: {
+    color: "white", // Texto branco
+    fontSize: normalize(24),
     fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
+    letterSpacing: 1,
+  },
+  // Conteúdo do formulário
+  formContent: {
+    padding: 24,
   },
   inputWrapper: {
     width: "100%",
@@ -747,7 +865,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#e0e0e0",
     borderRadius: 12,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 15,
   },
   inputError: {
@@ -757,6 +875,43 @@ const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333",
+  },
+  eyeIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(139, 195, 74, 0.1)",
+    borderRadius: 20,
+    marginLeft: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  eyeIconText: {
+    fontSize: normalize(16),
+    marginRight: 4,
+  },
+  eyeIconLabel: {
+    fontSize: normalize(12),
+    color: "#8BC34A",
+    fontWeight: "600",
+  },
+  strengthBarContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  strengthBarWrapper: {
+    height: 4,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  strengthBarFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  strengthText: {
+    fontSize: normalize(12),
+    marginTop: 4,
+    alignSelf: "flex-end",
   },
   termsContainer: {
     flexDirection: "row",

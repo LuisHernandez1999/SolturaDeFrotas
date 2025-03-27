@@ -117,5 +117,3 @@ export const cadastrarUser = async (nome, celular, senha, senhaConfirmar) => {
       }
     }
   }
-  
-  
