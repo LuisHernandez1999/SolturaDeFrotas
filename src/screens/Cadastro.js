@@ -19,8 +19,10 @@ import {
   useWindowDimensions,
   Alert,
   BackHandler,
+  ActivityIndicator,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
+import { cadastrarUser } from "../api/cadastrar" // Import the API function
 
 // Função para calcular tamanhos responsivos de forma mais precisa
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
@@ -28,7 +30,7 @@ const scale = SCREEN_WIDTH / 375 // Base para iPhone 8
 
 const normalize = (size) => {
   const newSize = size * scale
-  // Ajuste diferente para iOS e Android
+
   if (Platform.OS === "ios") {
     return Math.round(PixelRatio.roundToNearestPixel(newSize))
   }
@@ -192,6 +194,11 @@ const logoStyles = StyleSheet.create({
     textAlign: "center",
     flexShrink: 1,
   },
+  taglineLine: {
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    flex: 1,
+  },
 })
 
 // Componente de campo de entrada personalizado com melhor responsividade
@@ -234,7 +241,6 @@ const InputField = ({
 }
 
 // Add a phone formatting function
-// Add this function before the RegisterScreen component
 const formatPhoneNumber = (text) => {
   // Remove all non-numeric characters
   const cleaned = text.replace(/\D/g, "")
@@ -260,6 +266,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Estados para validação
   const [errors, setErrors] = useState({
@@ -268,6 +275,7 @@ export default function RegisterScreen() {
     password: "",
     confirmPassword: "",
     terms: "",
+    api: "",
   })
 
   // Navegação
@@ -306,6 +314,7 @@ export default function RegisterScreen() {
       password: "",
       confirmPassword: "",
       terms: "",
+      api: "",
     }
 
     // Validar nome
@@ -348,22 +357,145 @@ export default function RegisterScreen() {
     return isValid
   }
 
-  // Função para lidar com o registro
-  const handleRegister = () => {
+  // Função para lidar com o registro usando a API
+  const handleRegister = async () => {
     if (validateForm()) {
-      // Aqui você implementaria a lógica de registro
-      console.log({
-        name,
-        phone,
-        password,
+      setIsLoading(true)
+
+      // Resetar todos os erros
+      setErrors({
+        name: "",
+        phone: "",
+        password: "",
+        confirmPassword: "",
+        terms: "",
+        api: "",
       })
 
-      Alert.alert("Sucesso", "Cadastro realizado com sucesso!", [
-        {
-          text: "OK",
-          onPress: () => goBackToLogin(),
-        },
-      ])
+      try {
+        // Limpar formatação do telefone antes de enviar para a API
+        const cleanedPhone = phone.replace(/\D/g, "")
+
+        // Chamar a API de cadastro
+        const response = await cadastrarUser(name, cleanedPhone, password, confirmPassword)
+        console.log("Resposta processada da API:", response)
+
+        // Verificar se houve erro na resposta
+        if (response.erro) {
+          console.log("Erro detectado:", response.erro, "Campo:", response.field)
+
+          // Verificar se é um erro específico de campo
+          if (response.field === "both") {
+            // Erro em ambos os campos
+            setErrors((prev) => ({
+              ...prev,
+              name: "Este nome já está cadastrado",
+              phone: "Este número já está cadastrado",
+              api: "",
+            }))
+
+            Alert.alert("Erro de Cadastro", response.erro)
+          } else if (response.field) {
+            // Erro em um campo específico
+            const newErrors = { ...errors }
+            newErrors[response.field] = response.erro
+            setErrors(newErrors)
+
+            Alert.alert("Erro de Cadastro", response.erro)
+          } else if (response.isNetworkError) {
+            // Erro de rede
+            setErrors((prev) => ({
+              ...prev,
+              api: response.erro,
+            }))
+
+            Alert.alert(
+              "Erro de Conexão",
+              "Não foi possível conectar ao servidor. Verifique sua conexão de internet ou se o servidor está online.",
+            )
+          } else {
+            // Erro geral
+            setErrors((prev) => ({
+              ...prev,
+              api: response.erro,
+            }))
+
+            Alert.alert("Erro", response.erro)
+          }
+          return // Sair da função se houver erro
+        }
+
+        // Verificar se há mensagem na resposta, mesmo que success seja true
+        if (response.mensagem && typeof response.mensagem === "string") {
+          const mensagemLower = response.mensagem.toLowerCase()
+
+          // Se a mensagem parece ser um erro (contém palavras-chave de erro)
+          if (
+            mensagemLower.includes("existe") ||
+            mensagemLower.includes("erro") ||
+            mensagemLower.includes("inválido") ||
+            mensagemLower.includes("invalido")
+          ) {
+            // Verificar se menciona nome e celular
+            if (
+              mensagemLower.includes("nome") &&
+              (mensagemLower.includes("celular") || mensagemLower.includes("telefone"))
+            ) {
+              setErrors((prev) => ({
+                ...prev,
+                name: "Este nome já está cadastrado",
+                phone: "Este número já está cadastrado",
+                api: "",
+              }))
+            }
+            // Verificar se menciona apenas celular
+            else if (mensagemLower.includes("celular") || mensagemLower.includes("telefone")) {
+              setErrors((prev) => ({
+                ...prev,
+                phone: response.mensagem,
+                api: "",
+              }))
+            }
+            // Verificar se menciona apenas nome
+            else if (mensagemLower.includes("nome")) {
+              setErrors((prev) => ({
+                ...prev,
+                name: response.mensagem,
+                api: "",
+              }))
+            }
+            // Erro genérico
+            else {
+              setErrors((prev) => ({
+                ...prev,
+                api: response.mensagem,
+              }))
+            }
+
+            Alert.alert("Erro de Cadastro", response.mensagem)
+            setIsLoading(false)
+            return // Sair da função se a mensagem parece ser um erro
+          }
+        }
+
+        // Se chegou aqui, é porque não há erros
+        // Cadastro bem-sucedido
+        Alert.alert("Sucesso", "Cadastro realizado com sucesso!", [
+          {
+            text: "OK",
+            onPress: () => goBackToLogin(),
+          },
+        ])
+      } catch (error) {
+        console.error("Erro inesperado:", error)
+        setErrors((prev) => ({
+          ...prev,
+          api: "Erro inesperado ao processar a requisição",
+        }))
+        Alert.alert("Erro", "Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.")
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -422,6 +554,13 @@ export default function RegisterScreen() {
                 Criar Conta
               </Text>
 
+              {/* Erro da API */}
+              {errors.api ? (
+                <View style={styles.apiErrorContainer}>
+                  <Text style={styles.apiErrorText}>{errors.api}</Text>
+                </View>
+              ) : null}
+
               {/* Campos do formulário */}
               <InputField
                 label="Nome Completo"
@@ -436,7 +575,7 @@ export default function RegisterScreen() {
                 label="Celular"
                 placeholder="(XX) XXXXX-XXXX"
                 value={phone}
-                onChangeText={(text) => setPhone(formatPhoneNumber(text))}
+                onChangeText={handlePhoneChange}
                 keyboardType="phone-pad"
                 error={errors.phone}
               />
@@ -503,11 +642,17 @@ export default function RegisterScreen() {
                     height: isSmallDevice ? height * 0.06 : height * 0.065,
                     marginTop: isSmallDevice ? height * 0.01 : height * 0.02,
                   },
+                  isLoading ? styles.disabledButton : {},
                 ]}
                 activeOpacity={0.8}
                 onPress={handleRegister}
+                disabled={isLoading}
               >
-                <Text style={[styles.registerButtonText, { fontSize: normalize(16) }]}>CADASTRAR</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={[styles.registerButtonText, { fontSize: normalize(16) }]}>CADASTRAR</Text>
+                )}
               </TouchableOpacity>
 
               {/* Botão para voltar ao login */}
@@ -521,6 +666,7 @@ export default function RegisterScreen() {
                 ]}
                 onPress={goBackToLogin}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                disabled={isLoading}
               >
                 <Text style={[styles.backButtonText, { fontSize: normalize(14) }]}>Já tem uma conta? Faça login</Text>
               </TouchableOpacity>
@@ -658,6 +804,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
   },
+  disabledButton: {
+    backgroundColor: "#a5d6a7",
+    opacity: 0.8,
+  },
   registerButtonText: {
     color: "white",
     fontWeight: "bold",
@@ -676,6 +826,18 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: "rgba(255, 255, 255, 0.9)",
+  },
+  apiErrorContainer: {
+    backgroundColor: "#ffebee",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: "#e53935",
+  },
+  apiErrorText: {
+    color: "#c62828",
+    fontSize: normalize(14),
   },
 })
 

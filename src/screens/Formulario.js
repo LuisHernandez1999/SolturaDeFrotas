@@ -20,6 +20,8 @@ import {
   Easing,
   ActivityIndicator,
   Modal,
+  TouchableWithoutFeedback,
+  Pressable,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { useNavigation } from "@react-navigation/native"
@@ -139,7 +141,26 @@ const getResponsiveSize = (size) => {
   }
 }
 
-// Adicione esta função para criar efeitos de ripple nos botões
+// Componente TouchableArea para melhorar a resposta ao toque
+const TouchableArea = ({ onPress, style, children, hitSlop = { top: 15, bottom: 15, left: 15, right: 15 } }) => {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        style,
+        {
+          opacity: pressed ? 0.9 : 1,
+        },
+      ]}
+      hitSlop={hitSlop}
+      android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+    >
+      {children}
+    </Pressable>
+  );
+};
+
+// Ripple melhorado com resposta imediata ao toque
 const Ripple = ({ style, onPress, children }) => {
   const [rippleVisible, setRippleVisible] = useState(false)
   const [ripplePosition, setRipplePosition] = useState({ x: 0, y: 0 })
@@ -151,17 +172,20 @@ const Ripple = ({ style, onPress, children }) => {
     setRippleVisible(true)
     Animated.timing(rippleAnim, {
       toValue: 1,
-      duration: 400,
+      duration: 300, // Reduced from 400 for faster feedback
       easing: Easing.out(Easing.ease),
-      useNativeDriver: false,
+      useNativeDriver: true, // Changed to true for better performance
     }).start()
+    
+    // Execute onPress immediately for better responsiveness
+    if (onPress) onPress();
   }
 
   const handlePressOut = () => {
     Animated.timing(rippleAnim, {
       toValue: 0,
-      duration: 300,
-      useNativeDriver: false,
+      duration: 200, // Reduced from 300 for faster feedback
+      useNativeDriver: true, // Changed to true for better performance
     }).start(() => {
       setRippleVisible(false)
     })
@@ -178,12 +202,11 @@ const Ripple = ({ style, onPress, children }) => {
   })
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={[styles.rippleContainer, style]}
-      onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      activeOpacity={0.9}
+      android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
     >
       {children}
       {rippleVisible && (
@@ -201,7 +224,7 @@ const Ripple = ({ style, onPress, children }) => {
           ]}
         />
       )}
-    </TouchableOpacity>
+    </Pressable>
   )
 }
 
@@ -228,7 +251,7 @@ const useActiveAutocomplete = () => {
   return context
 }
 
-// Modifique o componente Autocomplete para usar animações e efeitos visuais
+// Autocomplete modificado para manter o dropdown aberto até o usuário selecionar um item
 const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label, error, zIndex = 1, id }) => {
   const [filteredData, setFilteredData] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -238,16 +261,25 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   const dropdownAnim = useRef(new Animated.Value(0)).current
   const borderColorAnim = useRef(new Animated.Value(0)).current
   const labelPosition = useRef(new Animated.Value(value ? 1 : 0)).current
+  const inputRef = useRef(null)
+  const containerRef = useRef(null)
+  const touchableRef = useRef(null)
 
   // Atualiza dados filtrados quando o valor muda
   useEffect(() => {
     if (value) {
       const filtered = data.filter((item) => item.toLowerCase().includes(value.toLowerCase()))
       setFilteredData(filtered)
+      
+      // Mantenha o dropdown aberto se houver dados filtrados
+      if (filtered.length > 0 && isFocused) {
+        setShowDropdown(true)
+        setActiveAutocomplete(id)
+      }
     } else {
       setFilteredData([])
     }
-  }, [value, data])
+  }, [value, data, isFocused])
 
   // Fecha o dropdown quando outro autocomplete é aberto
   useEffect(() => {
@@ -255,7 +287,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
       setShowDropdown(false)
       Animated.timing(dropdownAnim, {
         toValue: 0,
-        duration: 200,
+        duration: 150, // Reduced for faster response
         useNativeDriver: false,
       }).start()
     }
@@ -264,7 +296,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || value ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -273,7 +305,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -281,7 +313,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(dropdownAnim, {
       toValue: showDropdown && filteredData.length > 0 ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [showDropdown, filteredData])
@@ -300,19 +332,50 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
     onSelect(item)
     setShowDropdown(false)
     setActiveAutocomplete(null)
+    // Blur the input after selection for better UX
+    if (inputRef.current) {
+      inputRef.current.blur()
+    }
   }
 
   const handleFocus = () => {
     setIsFocused(true)
-    if (value.length > 0) {
+    if (value.length > 0 && filteredData.length > 0) {
       setShowDropdown(true)
       setActiveAutocomplete(id)
     }
   }
 
   const handleBlur = () => {
+    // Não feche o dropdown imediatamente ao perder o foco
+    // Isso permite que o usuário clique em um item do dropdown
     setIsFocused(false)
   }
+
+  const forceFocus = () => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      handleFocus()
+    }
+  }
+
+  // Função para lidar com cliques fora do dropdown
+  const handleOutsideClick = (e) => {
+    // Implementação para web/mobile
+    if (containerRef.current && !containerRef.current.contains(e.target)) {
+      setShowDropdown(false)
+    }
+  }
+
+  // Adiciona listener para cliques fora do dropdown
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      document.addEventListener('mousedown', handleOutsideClick)
+      return () => {
+        document.removeEventListener('mousedown', handleOutsideClick)
+      }
+    }
+  }, [])
 
   const labelStyle = {
     position: "absolute",
@@ -352,67 +415,107 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
     outputRange: [0, 1],
   })
 
-  return (
-    <View style={[styles.inputWrapper, { zIndex: showDropdown ? 100 : zIndex }]}>
-      <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <Animated.View
-        style={[
-          styles.animatedInputContainer,
-          {
-            borderColor,
-            height: inputHeight,
-          },
+  // Renderização dos itens do dropdown sem usar FlatList
+  const renderDropdownItems = () => {
+    return filteredData.map((item, index) => (
+      <Pressable 
+        key={index.toString()}
+        style={({ pressed }) => [
+          styles.dropdownItem,
+          pressed ? { backgroundColor: '#f0f0f0' } : {}
         ]}
+        onPress={() => handleSelect(item)}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)' }}
       >
-        <TextInput
-          style={styles.animatedInput}
-          placeholder={isFocused ? placeholder : ""}
-          placeholderTextColor="#999"
-          value={value}
-          onChangeText={handleTextChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-        />
-        {value.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => {
-              onChangeText("")
-              setShowDropdown(false)
-            }}
-          >
-            <Text style={styles.clearButtonText}>×</Text>
-          </TouchableOpacity>
-        )}
-      </Animated.View>
+        <Text style={styles.dropdownItemText}>{item}</Text>
+      </Pressable>
+    ));
+  };
+
+  return (
+    <View 
+      ref={containerRef}
+      style={[styles.inputWrapper, { zIndex: showDropdown ? 100 : zIndex }]}
+    >
+      <Animated.Text style={labelStyle}>{label}</Animated.Text>
+      
+      {/* Usando Pressable para resposta imediata ao toque */}
+      <Pressable 
+        ref={touchableRef}
+        style={{ width: '100%' }}
+        onPress={forceFocus}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Animated.View
+          style={[
+            styles.animatedInputContainer,
+            {
+              borderColor,
+              height: inputHeight,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            style={[styles.animatedInput, { pointerEvents: 'auto' }]}
+            placeholder={isFocused ? placeholder : ""}
+            placeholderTextColor="#999"
+            value={value}
+            onChangeText={handleTextChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {value.length > 0 && (
+            <Pressable
+              style={[styles.clearButton, { padding: 15 }]} // Larger touch target
+              onPress={() => {
+                onChangeText("")
+                setShowDropdown(false)
+                // Re-focus the input after clearing
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus()
+                  }
+                }, 10)
+              }}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
+              <Text style={styles.clearButtonText}>×</Text>
+            </Pressable>
+          )}
+        </Animated.View>
+      </Pressable>
+      
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <Animated.View
-        style={[
-          styles.dropdownContainer,
-          {
-            maxHeight: dropdownMaxHeight,
-            opacity: dropdownOpacity,
-            display: dropdownAnim._value === 0 ? "none" : "flex",
-          },
-        ]}
-      >
-        <FlatList
-          data={filteredData}
-          keyExtractor={(item, index) => index.toString()}
-          keyboardShouldPersistTaps="handled"
-          style={styles.dropdown}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.dropdownItem} onPress={() => handleSelect(item)} activeOpacity={0.7}>
-              <Text style={styles.dropdownItemText}>{item}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      </Animated.View>
+      {/* Dropdown que permanece aberto até o usuário selecionar um item */}
+      {showDropdown && filteredData.length > 0 && (
+        <Animated.View
+          style={[
+            styles.dropdownContainer,
+            {
+              maxHeight: dropdownMaxHeight,
+              opacity: dropdownOpacity,
+            },
+          ]}
+        >
+          <ScrollView 
+            style={styles.dropdown}
+            keyboardShouldPersistTaps="always"
+            nestedScrollEnabled={true}
+          >
+            {renderDropdownItems()}
+          </ScrollView>
+        </Animated.View>
+      )}
     </View>
-  )
+  );
 }
 
+// ColetoresSelector reescrito para melhor resposta ao toque
 const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, error }) => {
   const [coletor, setColetor] = useState("")
   const [isFocused, setIsFocused] = useState(false)
@@ -420,11 +523,12 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
   const borderColorAnim = useRef(new Animated.Value(0)).current
   const labelPosition = useRef(new Animated.Value(coletores.length > 0 || coletor ? 1 : 0)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
+  const inputRef = useRef(null)
 
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || coletores.length > 0 || coletor ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -433,7 +537,7 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -456,6 +560,11 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
 
       setColetores([...coletores, coletor.trim()])
       setColetor("")
+      
+      // Focus the input again after adding
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
     }
   }
 
@@ -463,6 +572,13 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
     const newColetores = [...coletores]
     newColetores.splice(index, 1)
     setColetores(newColetores)
+  }
+
+  const forceFocus = () => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      setIsFocused(true)
+    }
   }
 
   const labelStyle = {
@@ -496,61 +612,75 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <Animated.View
-        style={[
-          styles.coletorInputContainer,
-          {
-            borderColor,
-            height: inputHeight,
-          },
-        ]}
+      
+      <Pressable 
+        style={{ width: '100%' }}
+        onPress={forceFocus}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <TextInput
-          style={styles.animatedInput}
-          placeholder={isFocused ? "Nome do coletor" : ""}
-          placeholderTextColor="#999"
-          value={coletor}
-          onChangeText={setColetor}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-        />
-        <TouchableOpacity
+        <Animated.View
           style={[
-            styles.addButton,
+            styles.coletorInputContainer,
             {
-              opacity: coletores.length >= maxColetores ? 0.5 : 1,
-              width: getResponsiveSize(36),
-              height: getResponsiveSize(36),
-              borderRadius: getResponsiveSize(18),
+              borderColor,
+              height: inputHeight,
             },
           ]}
-          onPress={addColetor}
-          disabled={coletores.length >= maxColetores}
-          activeOpacity={0.7}
         >
-          <Text style={[styles.addButtonText, { fontSize: normalize(20) }]}>+</Text>
-        </TouchableOpacity>
-      </Animated.View>
+          <TextInput
+            ref={inputRef}
+            style={[styles.animatedInput, { flex: 1 }]}
+            placeholder={isFocused ? "Nome do coletor" : ""}
+            placeholderTextColor="#999"
+            value={coletor}
+            onChangeText={setColetor}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+          <Pressable
+            style={[
+              styles.addButton,
+              {
+                opacity: coletores.length >= maxColetores ? 0.5 : 1,
+                width: getResponsiveSize(40), // Increased size
+                height: getResponsiveSize(40), // Increased size
+                borderRadius: getResponsiveSize(20), // Increased size
+                padding: 10, // Added padding for larger touch area
+              },
+            ]}
+            onPress={addColetor}
+            disabled={coletores.length >= maxColetores}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+          >
+            <Text style={[styles.addButtonText, { fontSize: normalize(20) }]}>+</Text>
+          </Pressable>
+        </Animated.View>
+      </Pressable>
+      
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Animated.View style={[styles.coletoresList, { transform: [{ scale: scaleAnim }] }]}>
         {coletores.map((item, index) => (
           <View key={index} style={styles.coletorItem}>
             <Text style={styles.coletorName}>{item}</Text>
-            <TouchableOpacity
+            <Pressable
               style={[
                 styles.removeButton,
                 {
-                  width: getResponsiveSize(28),
-                  height: getResponsiveSize(28),
-                  borderRadius: getResponsiveSize(14),
+                  width: getResponsiveSize(32), // Increased size
+                  height: getResponsiveSize(32), // Increased size
+                  borderRadius: getResponsiveSize(16), // Increased size
+                  padding: 5, // Added padding for larger touch area
                 },
               ]}
               onPress={() => removeColetor(index)}
-              activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
             >
               <Text style={styles.removeButtonText}>×</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
       </Animated.View>
@@ -559,20 +689,21 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
         {coletores.length}/{maxColetores} coletores
       </Text>
     </View>
-  )
+  );
 }
 
-// Modifique o componente de Input para Celular com máscara
+// CelularInput reescrito para melhor resposta ao toque
 const CelularInput = ({ value, onChangeText, label, error }) => {
   const [isFocused, setIsFocused] = useState(false)
   const inputHeight = getInputHeight()
   const borderColorAnim = useRef(new Animated.Value(0)).current
   const labelPosition = useRef(new Animated.Value(value ? 1 : 0)).current
+  const inputRef = useRef(null)
 
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || value ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -581,7 +712,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -606,6 +737,13 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
     onChangeText(formatted)
   }
 
+  const forceFocus = () => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      setIsFocused(true)
+    }
+  }
+
   const labelStyle = {
     position: "absolute",
     left: 15,
@@ -637,33 +775,43 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <Animated.View
-        style={[
-          styles.animatedInputContainer,
-          {
-            borderColor,
-            height: inputHeight,
-          },
-        ]}
+      
+      <Pressable 
+        style={{ width: '100%' }}
+        onPress={forceFocus}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <TextInput
-          style={styles.animatedInput}
-          placeholder={isFocused ? "(XX) XXXXX-XXXX" : ""}
-          placeholderTextColor="#999"
-          value={value}
-          onChangeText={formatCelular}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          keyboardType="phone-pad"
-          maxLength={16} // (XX) XXXXX-XXXX = 16 caracteres
-        />
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.animatedInputContainer,
+            {
+              borderColor,
+              height: inputHeight,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            style={styles.animatedInput}
+            placeholder={isFocused ? "(XX) XXXXX-XXXX" : ""}
+            placeholderTextColor="#999"
+            value={value}
+            onChangeText={formatCelular}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            keyboardType="phone-pad"
+            maxLength={16}
+          />
+        </Animated.View>
+      </Pressable>
+      
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
-  )
+  );
 }
 
-// Modifique o componente de Seleção de Data e Hora
+// DateTimeSelector reescrito para melhor resposta ao toque
 const DateTimeSelector = ({ date, setDate, label, error }) => {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
@@ -675,7 +823,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || date ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -684,7 +832,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 200,
+      duration: 150, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -713,7 +861,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
       // Após selecionar a data, abre o seletor de hora
       setTimeout(() => {
         setShowTimePicker(true)
-      }, 300)
+      }, 100) // Reduced from 300 for faster response
     }
   }
 
@@ -725,6 +873,11 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
       currentDate.setMinutes(selectedTime.getMinutes())
       setDate(currentDate)
     }
+  }
+
+  const openDatePicker = () => {
+    setIsFocused(true)
+    setShowDatePicker(true)
   }
 
   const labelStyle = {
@@ -758,13 +911,12 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   return (
     <View style={styles.inputWrapper}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <TouchableOpacity
-        onPress={() => {
-          setIsFocused(true)
-          setShowDatePicker(true)
-        }}
-        activeOpacity={0.7}
-        onPressOut={() => setIsFocused(false)}
+      
+      <Pressable
+        style={{ width: '100%' }}
+        onPress={openDatePicker}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: false }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Animated.View
           style={[
@@ -786,18 +938,19 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
           >
             {date ? formatDateTime(date) : "Selecionar data e hora"}
           </Text>
-          <View style={styles.calendarIcon}>
+          <View style={[styles.calendarIcon, { padding: 10 }]}>
             <Text style={styles.calendarIconText}>📅</Text>
           </View>
         </Animated.View>
-      </TouchableOpacity>
+      </Pressable>
+      
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {showDatePicker && (
         <DateTimePicker
           value={date || new Date()}
           mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
+          display="default"
           onChange={onChangeDate}
         />
       )}
@@ -806,12 +959,12 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
         <DateTimePicker
           value={date || new Date()}
           mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
+          display="default"
           onChange={onChangeTime}
         />
       )}
     </View>
-  )
+  );
 }
 
 // Componente de mensagem de sucesso
@@ -880,9 +1033,13 @@ const SuccessMessage = ({ visible, onClose }) => {
           </View>
           <Text style={styles.successTitle}>Sucesso!</Text>
           <Text style={styles.successText}>Formulário enviado com sucesso!</Text>
-          <TouchableOpacity style={styles.successCloseButton} onPress={handleClose} activeOpacity={0.7}>
+          <Pressable 
+            style={styles.successCloseButton} 
+            onPress={handleClose}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+          >
             <Text style={styles.successCloseButtonText}>OK</Text>
-          </TouchableOpacity>
+          </Pressable>
         </Animated.View>
       </View>
     </Modal>
@@ -958,8 +1115,7 @@ const Formulario = () => {
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
-
-  // Função para limpar todos os campos do formulário
+  
   const resetForm = () => {
     setMotorista("")
     setPrefixo("")
@@ -975,15 +1131,9 @@ const Formulario = () => {
   const handleSubmit = () => {
     if (validateForm()) {
       setIsSubmitting(true)
-
-      // Simular envio para o servidor
       setTimeout(() => {
         setIsSubmitting(false)
-
-        // Mostrar mensagem de sucesso
         setShowSuccess(true)
-
-        // Registrar dados no console
         console.log({
           motorista,
           prefixo,
@@ -1201,7 +1351,8 @@ const Formulario = () => {
         >
           <ScrollView
             contentContainerStyle={[styles.scrollContent, { paddingVertical: getResponsiveSize(20) }]}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always" // Changed from "handled" to "always"
+            nestedScrollEnabled={true}
           >
             <View style={styles.header}>
               <Text style={[styles.headerTitle, { fontSize: normalize(24) }]}>Formulário de Coleta</Text>
@@ -1275,7 +1426,7 @@ const Formulario = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff", // Fundo branco conforme solicitado
+    backgroundColor: "#ffffff",
   },
   backgroundContainer: {
     position: "absolute",
@@ -1283,7 +1434,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "#ffffff", // Fundo branco conforme solicitado
+    backgroundColor: "#ffffff",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -1300,22 +1451,23 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontWeight: "bold",
-    color: "#8BC34A", // Título verde claro conforme solicitado
-    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)", // Usando textShadow em vez de textShadowColor, etc.
+    color: "#8BC34A",
+    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)",
   },
   headerUnderline: {
     height: 3,
     width: 60,
-    backgroundColor: "#8BC34A", // Verde claro para combinar com o título
+    backgroundColor: "#8BC34A",
     marginTop: 8,
     borderRadius: 1.5,
   },
   formContainer: {
     backgroundColor: "white",
-    boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.15)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.15)",
     marginBottom: 20,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
+    elevation: 3, // Added for Android
   },
   twoColumnLayout: {
     flexDirection: "row",
@@ -1366,7 +1518,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)", // Usando boxShadow em vez de shadowColor, etc.
+    elevation: 2, // Added for Android
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
   input: {
     flex: 1,
@@ -1397,13 +1553,14 @@ const styles = StyleSheet.create({
     marginTop: 5,
     borderRadius: 10,
     overflow: "hidden",
-    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
   },
   dropdown: {
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#eee",
     borderRadius: 10,
+    maxHeight: 200,
   },
   dropdownItem: {
     padding: 14,
@@ -1422,7 +1579,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingHorizontal: 15,
     justifyContent: "space-between",
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)",
+    elevation: 2, // Added for Android
   },
   dateTimeText: {
     flex: 1,
@@ -1443,14 +1601,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)",
+    elevation: 2, // Added for Android
   },
   addButton: {
-    backgroundColor: "#8BC34A", // Verde claro para combinar com o tema
+    backgroundColor: "#8BC34A",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.2)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.2)",
+    elevation: 3, // Added for Android
   },
   addButtonText: {
     color: "white",
@@ -1468,7 +1628,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#eee",
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
+    elevation: 1, // Added for Android
   },
   coletorName: {
     flex: 1,
@@ -1480,7 +1641,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#e53935",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.2)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.2)",
+    elevation: 2, // Added for Android
   },
   removeButtonText: {
     color: "white",
@@ -1498,12 +1660,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 12,
     overflow: "hidden",
-    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)",
+    elevation: 3, // Added for Android
   },
   submitButtonBackground: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#8BC34A", // Verde claro para combinar com o tema
+    backgroundColor: "#8BC34A",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1519,12 +1682,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: "100%",
     overflow: "hidden",
-    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)", // Usando boxShadow em vez de shadowColor, etc.
+    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)",
+    elevation: 3, // Added for Android
   },
   buttonBackground: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#8BC34A", // Verde claro para combinar com o tema
+    backgroundColor: "#8BC34A",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1541,7 +1705,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: "rgba(255, 255, 255, 0.3)",
   },
-  // Estilos para a mensagem de sucesso
   successOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1601,4 +1764,3 @@ const styles = StyleSheet.create({
 })
 
 export default Formulario
-

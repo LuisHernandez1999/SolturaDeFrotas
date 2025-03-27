@@ -17,6 +17,7 @@ import {
   Animated,
   useWindowDimensions,
   TextInput,
+  KeyboardAvoidingView,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 
@@ -384,7 +385,7 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
   if (!editedRota) return null
 
   // Calcular altura máxima do modal com base na altura da tela
-  const maxModalHeight = screenHeight * (isSmallScreen ? 0.85 : 0.8)
+  const maxModalHeight = screenHeight * 0.8
 
   // Função para adicionar um coletor
   const addColetor = () => {
@@ -442,6 +443,9 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
     setIsEditing(false)
   }
 
+  // Calculate modal width based on screen size
+  const modalWidth = screenWidth > 500 ? 500 : screenWidth * 0.92
+
   return (
     <Modal
       visible={isVisible}
@@ -451,217 +455,219 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
       statusBarTranslucent={true}
       hardwareAccelerated={true}
     >
-      <View style={styles.modalOverlay}>
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-              width: screenWidth > 500 ? 500 : screenWidth * 0.9,
-              maxHeight: maxModalHeight,
-            },
-          ]}
-        >
-          <View style={styles.modalHeaderGradient}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, isSmallScreen && { fontSize: normalize(16) }]}>
-                {isEditing ? "Editar Rota" : "Detalhes da Rota"}
-              </Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={onClose}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <ScrollView
-            style={styles.modalContent}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.modalContentContainer, { padding: padding }]}
-            keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalKeyboardAvoid}>
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+                width: modalWidth,
+                maxHeight: maxModalHeight,
+              },
+            ]}
           >
-            <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Data:</Text>
-                <Text style={styles.detailValue}>{editedRota.data}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Hora:</Text>
-                <Text style={styles.detailValue}>{editedRota.hora}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Informações do Veículo</Text>
-                {!isEditing && (
-                  <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
-                    <Text style={styles.editButtonText}>Editar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Motorista:</Text>
-                {isEditing ? (
-                  <Autocomplete
-                    id="motorista-autocomplete"
-                    options={motoristas}
-                    value={editedRota.motorista}
-                    onChangeText={(text) => setEditedRota({ ...editedRota, motorista: text })}
-                    onSelect={(value) => setEditedRota({ ...editedRota, motorista: value })}
-                    placeholder="Selecione o motorista"
-                    style={styles.editAutocomplete}
-                  />
-                ) : (
-                  <Text style={styles.detailValue}>{editedRota.motorista}</Text>
-                )}
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Prefixo:</Text>
-                {isEditing ? (
-                  <Autocomplete
-                    id="prefixo-autocomplete"
-                    options={prefixos}
-                    value={editedRota.prefixo}
-                    onChangeText={(text) => setEditedRota({ ...editedRota, prefixo: text })}
-                    onSelect={(value) => setEditedRota({ ...editedRota, prefixo: value })}
-                    placeholder="Selecione o prefixo"
-                    style={styles.editAutocomplete}
-                  />
-                ) : (
-                  <Text style={styles.detailValue}>{editedRota.prefixo}</Text>
-                )}
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Setor:</Text>
-                <Text style={styles.detailValue}>{editedRota.setor}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Frequência:</Text>
-                <Text style={styles.detailValue}>{editedRota.frequencia || "Diária"}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.modalSection, { zIndex: teamZIndex }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Equipe</Text>
-              </View>
-
-              {isEditing && (
-                <View style={styles.addColetorContainer}>
-                  <Autocomplete
-                    id="coletor-autocomplete"
-                    options={todosColetores.filter((c) => !editedRota.coletores.includes(c))}
-                    value={newColetor}
-                    onChangeText={setNewColetor}
-                    onSelect={(value) => {
-                      addColetor(value)
-                      setNewColetor("")
-                    }}
-                    placeholder="Adicionar coletor"
-                    style={styles.coletorAutocomplete}
-                  />
-                  <TouchableOpacity
-                    style={styles.addColetorButton}
-                    onPress={addColetor}
-                    disabled={!newColetor || editedRota.coletores.includes(newColetor)}
-                  >
-                    <Text style={styles.addColetorButtonText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <View style={styles.coletoresList}>
-                {editedRota.coletores.map((coletor, index) => (
-                  <View key={index} style={styles.coletorItem}>
-                    <Text style={styles.coletorText}>{coletor}</Text>
-                    {isEditing && (
-                      <TouchableOpacity style={styles.removeColetorButton} onPress={() => removeColetor(index)}>
-                        <Text style={styles.removeColetorButtonText}>✕</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={[styles.modalSection, { zIndex: contactZIndex }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Contato</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Celular:</Text>
-                <Text style={styles.detailValue}>{editedRota.celular || "(XX) XXXXX-XXXX"}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Líder:</Text>
-                <Text style={styles.detailValue}>{editedRota.lider || "Não informado"}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.modalSection, { zIndex: observationsZIndex }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Observações</Text>
-              </View>
-
-              {isEditing ? (
-                <TextInput
-                  style={styles.observacoesInput}
-                  multiline
-                  value={editedRota.observacoes}
-                  onChangeText={(text) => setEditedRota({ ...editedRota, observacoes: text })}
-                  placeholder="Adicione observações aqui"
-                />
-              ) : (
-                <View style={styles.observacoesContainer}>
-                  <Text style={styles.observacoesText}>
-                    {editedRota.observacoes || "Nenhuma observação registrada"}
-                  </Text>
-                </View>
-              )}
-
-              {isEditing && autoObservacoes && (
-                <View style={styles.autoObservacoesContainer}>
-                  <Text style={styles.autoObservacoesTitle}>Alterações detectadas:</Text>
-                  <Text style={styles.autoObservacoesText}>{autoObservacoes}</Text>
-                  <Text style={styles.autoObservacoesNote}>
-                    Estas alterações serão adicionadas automaticamente às observações ao salvar.
-                  </Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-
-          <View style={[styles.modalFooter, { padding: padding }]}>
-            {isEditing ? (
-              <View style={styles.editButtonsRow}>
-                <RippleButton
-                  style={styles.cancelButton}
-                  textStyle={styles.cancelButtonText}
-                  onPress={handleCancelEdit}
+            <View style={styles.modalHeaderGradient}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, isSmallScreen && { fontSize: normalize(16) }]}>
+                  {isEditing ? "Editar Rota" : "Detalhes da Rota"}
+                </Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 >
-                  CANCELAR
-                </RippleButton>
-                <RippleButton style={styles.saveButton} textStyle={styles.saveButtonText} onPress={handleSave}>
-                  SALVAR
-                </RippleButton>
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <RippleButton style={styles.modalButton} textStyle={styles.modalButtonText} onPress={onClose}>
-                FECHAR
-              </RippleButton>
-            )}
-          </View>
-        </Animated.View>
-      </View>
+            </View>
+
+            <ScrollView
+              style={[styles.modalContent, { maxHeight: maxModalHeight * 0.7 }]}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={[styles.modalContentContainer, { padding: padding }]}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Data:</Text>
+                  <Text style={styles.detailValue}>{editedRota.data}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Hora:</Text>
+                  <Text style={styles.detailValue}>{editedRota.hora}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Informações do Veículo</Text>
+                  {!isEditing && (
+                    <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
+                      <Text style={styles.editButtonText}>Editar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Motorista:</Text>
+                  {isEditing ? (
+                    <Autocomplete
+                      id="motorista-autocomplete"
+                      options={motoristas}
+                      value={editedRota.motorista}
+                      onChangeText={(text) => setEditedRota({ ...editedRota, motorista: text })}
+                      onSelect={(value) => setEditedRota({ ...editedRota, motorista: value })}
+                      placeholder="Selecione o motorista"
+                      style={styles.editAutocomplete}
+                    />
+                  ) : (
+                    <Text style={styles.detailValue}>{editedRota.motorista}</Text>
+                  )}
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Prefixo:</Text>
+                  {isEditing ? (
+                    <Autocomplete
+                      id="prefixo-autocomplete"
+                      options={prefixos}
+                      value={editedRota.prefixo}
+                      onChangeText={(text) => setEditedRota({ ...editedRota, prefixo: text })}
+                      onSelect={(value) => setEditedRota({ ...editedRota, prefixo: value })}
+                      placeholder="Selecione o prefixo"
+                      style={styles.editAutocomplete}
+                    />
+                  ) : (
+                    <Text style={styles.detailValue}>{editedRota.prefixo}</Text>
+                  )}
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Setor:</Text>
+                  <Text style={styles.detailValue}>{editedRota.setor}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Frequência:</Text>
+                  <Text style={styles.detailValue}>{editedRota.frequencia || "Diária"}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.modalSection, { zIndex: teamZIndex }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Equipe</Text>
+                </View>
+
+                {isEditing && (
+                  <View style={styles.addColetorContainer}>
+                    <Autocomplete
+                      id="coletor-autocomplete"
+                      options={todosColetores.filter((c) => !editedRota.coletores.includes(c))}
+                      value={newColetor}
+                      onChangeText={setNewColetor}
+                      onSelect={(value) => {
+                        addColetor(value)
+                        setNewColetor("")
+                      }}
+                      placeholder="Adicionar coletor"
+                      style={styles.coletorAutocomplete}
+                    />
+                    <TouchableOpacity
+                      style={styles.addColetorButton}
+                      onPress={addColetor}
+                      disabled={!newColetor || editedRota.coletores.includes(newColetor)}
+                    >
+                      <Text style={styles.addColetorButtonText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={styles.coletoresList}>
+                  {editedRota.coletores.map((coletor, index) => (
+                    <View key={index} style={styles.coletorItem}>
+                      <Text style={styles.coletorText}>{coletor}</Text>
+                      {isEditing && (
+                        <TouchableOpacity style={styles.removeColetorButton} onPress={() => removeColetor(index)}>
+                          <Text style={styles.removeColetorButtonText}>✕</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View style={[styles.modalSection, { zIndex: contactZIndex }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Contato</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Celular:</Text>
+                  <Text style={styles.detailValue}>{editedRota.celular || "(XX) XXXXX-XXXX"}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Líder:</Text>
+                  <Text style={styles.detailValue}>{editedRota.lider || "Não informado"}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.modalSection, { zIndex: observationsZIndex }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Observações</Text>
+                </View>
+
+                {isEditing ? (
+                  <TextInput
+                    style={styles.observacoesInput}
+                    multiline
+                    value={editedRota.observacoes}
+                    onChangeText={(text) => setEditedRota({ ...editedRota, observacoes: text })}
+                    placeholder="Adicione observações aqui"
+                  />
+                ) : (
+                  <View style={styles.observacoesContainer}>
+                    <Text style={styles.observacoesText}>
+                      {editedRota.observacoes || "Nenhuma observação registrada"}
+                    </Text>
+                  </View>
+                )}
+
+                {isEditing && autoObservacoes && (
+                  <View style={styles.autoObservacoesContainer}>
+                    <Text style={styles.autoObservacoesTitle}>Alterações detectadas:</Text>
+                    <Text style={styles.autoObservacoesText}>{autoObservacoes}</Text>
+                    <Text style={styles.autoObservacoesNote}>
+                      Estas alterações serão adicionadas automaticamente às observações ao salvar.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { padding: padding }]}>
+              {isEditing ? (
+                <View style={styles.editButtonsRow}>
+                  <RippleButton
+                    style={styles.cancelButton}
+                    textStyle={styles.cancelButtonText}
+                    onPress={handleCancelEdit}
+                  >
+                    CANCELAR
+                  </RippleButton>
+                  <RippleButton style={styles.saveButton} textStyle={styles.saveButtonText} onPress={handleSave}>
+                    SALVAR
+                  </RippleButton>
+                </View>
+              ) : (
+                <RippleButton style={styles.modalButton} textStyle={styles.modalButtonText} onPress={onClose}>
+                  FECHAR
+                </RippleButton>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -970,16 +976,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  headerContainer: {
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
   header: {
     width: "100%",
     flexDirection: "row",
@@ -1120,6 +1116,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   // Modal styles
+  modalKeyboardAvoid: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1170,7 +1169,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   modalContent: {
-    maxHeight: 400,
+    flexGrow: 0,
   },
   modalContentContainer: {
     padding: 20,
@@ -1247,10 +1246,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
-    width: "40%",
+    width: "100%",
     alignSelf: "center",
     marginTop: 5,
     marginBottom: 5,
+    height: 45,
   },
   modalButtonText: {
     color: "white",
@@ -1435,6 +1435,7 @@ const styles = StyleSheet.create({
     width: "48%",
     borderWidth: 1,
     borderColor: "#ddd",
+    height: 45,
   },
   cancelButtonText: {
     color: "#666",
@@ -1449,6 +1450,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 8,
     width: "48%",
+    height: 45,
   },
   saveButtonText: {
     color: "white",
@@ -1459,35 +1461,6 @@ const styles = StyleSheet.create({
   dropdownModalOverlay: {
     flex: 1,
     backgroundColor: "transparent",
-  },
-  dropdownList: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    maxHeight: 150,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 999, // Very high elevation for Android
-    zIndex: 9999, // Very high z-index
-  },
-  dropdownScroll: {
-    maxHeight: 150,
-  },
-  dropdownItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  dropdownItemText: {
-    fontSize: normalize(14),
-    color: "#333",
-  },
-  dropdownItemTextSelected: {
-    color: "#8BC34A",
-    fontWeight: "bold",
   },
 })
 
