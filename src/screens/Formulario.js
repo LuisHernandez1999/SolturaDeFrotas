@@ -21,7 +21,6 @@ import {
   Pressable,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { useFocusEffect } from "@react-navigation/native"
 
 // Função para calcular tamanhos responsivos baseados no tipo de dispositivo
 const getDeviceType = () => {
@@ -102,21 +101,22 @@ const getInputHeight = () => {
   }
 }
 
+// Aumentar a altura dos botões
 const getButtonHeight = () => {
   const deviceType = getDeviceType()
   const { height } = Dimensions.get("window")
 
   switch (deviceType) {
     case "tablet":
-      return height * 0.075
+      return height * 0.085
     case "largePhone":
-      return height * 0.07
+      return height * 0.08
     case "mediumPhone":
-      return height * 0.065
+      return height * 0.075
     case "smallPhone":
-      return height * 0.06
+      return height * 0.07
     default:
-      return height * 0.065
+      return height * 0.075
   }
 }
 
@@ -746,7 +746,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
       inputRange: [0, 1],
       outputRange: ["#999", "#8BC34A"],
     }),
-    backgroundColor: isFocused ? "white" : "transparent",
+    backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
       inputRange: [0, 1],
       outputRange: [0, 4],
@@ -944,6 +944,275 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   )
 }
 
+// TimeSelector component for selecting only time
+const TimeSelector = ({ time, setTime, label, error }) => {
+  const [showTimePicker, setShowTimePicker] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  const inputHeight = getInputHeight()
+  const borderColorAnim = useRef(new Animated.Value(0)).current
+  const labelPosition = useRef(new Animated.Value(time ? 1 : 0)).current
+
+  useEffect(() => {
+    Animated.timing(labelPosition, {
+      toValue: isFocused || time ? 1 : 0,
+      duration: 150,
+      easing: Easing.bezier(0.4, 0.2, 0.2, 1),
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused, time, labelPosition])
+
+  useEffect(() => {
+    Animated.timing(borderColorAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 150,
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused, borderColorAnim])
+
+  const formatTime = (time) => {
+    if (!time) return ""
+
+    const hours = String(time.getHours()).padStart(2, "0")
+    const minutes = String(time.getMinutes()).padStart(2, "0")
+
+    return `${hours}:${minutes}`
+  }
+
+  const onChangeTime = (event, selectedTime) => {
+    setShowTimePicker(false)
+    if (selectedTime) {
+      setTime(selectedTime)
+    }
+  }
+
+  const openTimePicker = () => {
+    setIsFocused(true)
+    setShowTimePicker(true)
+  }
+
+  const labelStyle = {
+    position: "absolute",
+    left: 15,
+    top: labelPosition.interpolate({
+      inputRange: [0, 1],
+      outputRange: [inputHeight / 2 - 10, -10],
+    }),
+    fontSize: labelPosition.interpolate({
+      inputRange: [0, 1],
+      outputRange: [16, 12],
+    }),
+    color: labelPosition.interpolate({
+      inputRange: [0, 1],
+      outputRange: ["#999", "#8BC34A"],
+    }),
+    backgroundColor: "white",
+    paddingHorizontal: labelPosition.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 4],
+    }),
+    zIndex: 1,
+  }
+
+  const borderColor = borderColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ddd", "#8BC34A"],
+  })
+
+  return (
+    <View style={styles.inputWrapper}>
+      <Animated.Text style={labelStyle}>{label}</Animated.Text>
+
+      <Pressable
+        style={{ width: "100%" }}
+        onPress={openTimePicker}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Animated.View
+          style={[
+            styles.dateTimeContainer,
+            {
+              borderColor,
+              height: inputHeight,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.dateTimeText,
+              {
+                color: time ? "#333" : "#999",
+                fontSize: normalize(16),
+              },
+            ]}
+          >
+            {time ? formatTime(time) : "Selecionar horário"}
+          </Text>
+          <View style={[styles.calendarIcon, { padding: 10 }]}>
+            <Text style={styles.calendarIconText}>🕒</Text>
+          </View>
+        </Animated.View>
+      </Pressable>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {showTimePicker && (
+        <DateTimePicker value={time || new Date()} mode="time" display="default" onChange={onChangeTime} />
+      )}
+    </View>
+  )
+}
+
+// Modificar o SolturaInfoModal para não fechar automaticamente e adicionar mensagem de sucesso
+const SolturaInfoModal = ({ visible, onClose, formData }) => {
+  const scaleAnim = useRef(new Animated.Value(0.5)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [visible])
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.5,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose && onClose()
+    })
+  }
+
+  if (!visible) return null
+
+  const formatDateTime = (date) => {
+    if (!date) return "N/A"
+
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
+
+  const formatTime = (time) => {
+    if (!time) return "N/A"
+
+    const hours = String(time.getHours()).padStart(2, "0")
+    const minutes = String(time.getMinutes()).padStart(2, "0")
+
+    return `${hours}:${minutes}`
+  }
+
+  return (
+    <Modal transparent visible={visible} animationType="none">
+      <View style={styles.successOverlay}>
+        <Animated.View
+          style={[
+            styles.solturaInfoContainer,
+            {
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <View style={styles.solturaHeader}>
+            <Text style={styles.solturaTitle}>Soltura de Frota</Text>
+            <Text style={styles.solturaSuccessMessage}>Frota registrada com sucesso!</Text>
+            <View style={styles.solturaHeaderUnderline} />
+          </View>
+
+          <View style={styles.solturaContent}>
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Motorista:</Text>
+              <Text style={styles.solturaValue}>{formData.motorista || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Prefixo:</Text>
+              <Text style={styles.solturaValue}>{formData.prefixo || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Data/Hora:</Text>
+              <Text style={styles.solturaValue}>{formatDateTime(formData.dataHora)}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Hora Entrega Chave:</Text>
+              <Text style={styles.solturaValue}>{formatTime(formData.horaEntregaChave)}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Hora Saída Frota:</Text>
+              <Text style={styles.solturaValue}>{formatTime(formData.horaSaidaFrota)}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Frequência:</Text>
+              <Text style={styles.solturaValue}>{formData.frequencia || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Setor:</Text>
+              <Text style={styles.solturaValue}>{formData.setor || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Coletores:</Text>
+              <Text style={styles.solturaValue}>
+                {formData.coletores && formData.coletores.length > 0 ? formData.coletores.join(", ") : "N/A"}
+              </Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Celular:</Text>
+              <Text style={styles.solturaValue}>{formData.celular || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Líder:</Text>
+              <Text style={styles.solturaValue}>{formData.lider || "N/A"}</Text>
+            </View>
+          </View>
+
+          <Pressable
+            style={styles.solturaCloseButton}
+            onPress={handleClose}
+            android_ripple={{ color: "rgba(139, 195, 74, 0.2)", borderless: false }}
+          >
+            <Text style={styles.solturaCloseButtonText}>OK</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+// Modificar o handleSubmit para não mostrar a mensagem de sucesso
+// Aumentar a altura do formulário ajustando o padding
 // Componente de mensagem de sucesso
 const SuccessMessage = ({ visible, onClose }) => {
   const scaleAnim = useRef(new Animated.Value(0.5)).current
@@ -1034,76 +1303,43 @@ const Formulario = ({ navigation }) => {
   const [coletores, setColetores] = useState([])
   const [celular, setCelular] = useState("")
   const [lider, setLider] = useState("")
+  // Novos estados para os campos adicionados
+  const [horaEntregaChave, setHoraEntregaChave] = useState(null)
+  const [horaSaidaFrota, setHoraSaidaFrota] = useState(null)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showSolturaInfo, setShowSolturaInfo] = useState(false)
+  const [formData, setFormData] = useState({})
   const formScaleAnim = useRef(new Animated.Value(0.95)).current
   const formOpacityAnim = useRef(new Animated.Value(0)).current
 
-  // Múltiplas abordagens para ocultar o cabeçalho
-  useEffect(() => {
-    // Método 1: Usando setOptions
-    if (navigation && navigation.setOptions) {
-      navigation.setOptions({
-        headerShown: false,
-        header: () => null,
-        title: null,
-      })
-    }
-  }, [navigation])
+  const motoristas = ["João", "Maria", "José"]
+  const prefixos = ["ABC-1234", "DEF-5678", "GHI-9012"]
+  const frequencias = ["Diária", "Semanal", "Mensal"]
+  const setores = ["Norte", "Sul", "Leste", "Oeste"]
+  const lideres = ["Carlos", "Ana", "Paulo"]
 
-  // Método 2: Usando useFocusEffect para garantir que o cabeçalho seja ocultado quando a tela receber foco
-  useFocusEffect(
-    React.useCallback(() => {
-      if (navigation && navigation.setOptions) {
-        navigation.setOptions({
-          headerShown: false,
-          header: () => null,
-          title: null,
-        })
-      }
-
-      // Configurar a StatusBar corretamente
-      StatusBar.setBarStyle("light-content")
-      if (Platform.OS === "android") {
-        StatusBar.setTranslucent(true)
-        StatusBar.setBackgroundColor("transparent")
-        StatusBar.setHidden(false)
-      }
-
-      return () => {
-        // Restaurar configurações padrão ao sair da tela, se necessário
-      }
-    }, [navigation]),
-  )
-
-  // Animação de entrada do formulário
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(formScaleAnim, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.out(Easing.back(1.5)),
-        useNativeDriver: true,
-      }),
-      Animated.timing(formOpacityAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [])
-
-  const motoristas = ["João Silva", "Maria Oliveira", "Pedro Santos", "Ana Costa", "Carlos Ferreira"]
-  const prefixos = ["ABC-1234", "DEF-5678", "GHI-9012", "JKL-3456", "MNO-7890"]
-  const frequencias = ["Diária", "Semanal", "Quinzenal", "Mensal"]
-  const setores = ["Norte", "Sul", "Leste", "Oeste", "Centro"]
-  const lideres = ["Roberto Alves", "Fernanda Lima", "Marcelo Souza", "Juliana Pereira"]
   const { width, height } = useWindowDimensions()
   const orientation = useOrientation()
   const isLandscape = orientation === "LANDSCAPE"
   const deviceType = getDeviceType()
   const isTablet = deviceType === "tablet"
+
+  useEffect(() => {
+    Animated.timing(formOpacityAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start()
+
+    Animated.spring(formScaleAnim, {
+      toValue: 1,
+      friction: 9,
+      tension: 50,
+      useNativeDriver: true,
+    }).start()
+  }, [])
 
   const validateForm = () => {
     const newErrors = {}
@@ -1123,6 +1359,10 @@ const Formulario = ({ navigation }) => {
 
     if (!lider) newErrors.lider = "Líder é obrigatório"
 
+    // Validação para os novos campos
+    if (!horaEntregaChave) newErrors.horaEntregaChave = "Hora de entrega da chave é obrigatória"
+    if (!horaSaidaFrota) newErrors.horaSaidaFrota = "Hora de saída da frota é obrigatória"
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -1136,25 +1376,37 @@ const Formulario = ({ navigation }) => {
     setColetores([])
     setCelular("")
     setLider("")
+    setHoraEntregaChave(null)
+    setHoraSaidaFrota(null)
     setErrors({})
   }
 
+  // Add the handleSubmit function here, inside the component
   const handleSubmit = () => {
     if (validateForm()) {
       setIsSubmitting(true)
+
+      // Salvar os dados do formulário para exibir no modal
+      const data = {
+        motorista,
+        prefixo,
+        dataHora,
+        frequencia,
+        setor,
+        coletores,
+        celular,
+        lider,
+        horaEntregaChave,
+        horaSaidaFrota,
+      }
+
+      setFormData(data)
+
       setTimeout(() => {
         setIsSubmitting(false)
-        setShowSuccess(true)
-        console.log({
-          motorista,
-          prefixo,
-          dataHora,
-          frequencia,
-          setor,
-          coletores,
-          celular,
-          lider,
-        })
+        // Mostrar diretamente o modal de informações de soltura
+        setShowSolturaInfo(true)
+        console.log(data)
         resetForm()
       }, 1500)
     }
@@ -1195,6 +1447,13 @@ const Formulario = ({ navigation }) => {
 
             <DateTimeSelector date={dataHora} setDate={setDataHora} label="Data e Hora" error={errors.dataHora} />
 
+            <TimeSelector
+              time={horaEntregaChave}
+              setTime={setHoraEntregaChave}
+              label="Hora de Entrega da Chave"
+              error={errors.horaEntregaChave}
+            />
+
             <Autocomplete
               data={frequencias}
               value={frequencia}
@@ -1219,6 +1478,13 @@ const Formulario = ({ navigation }) => {
               error={errors.setor}
               zIndex={8}
               id="setor"
+            />
+
+            <TimeSelector
+              time={horaSaidaFrota}
+              setTime={setHoraSaidaFrota}
+              label="Hora de Saída da Frota"
+              error={errors.horaSaidaFrota}
             />
 
             <ColetoresSelector
@@ -1273,6 +1539,20 @@ const Formulario = ({ navigation }) => {
         />
 
         <DateTimeSelector date={dataHora} setDate={setDataHora} label="Data e Hora" error={errors.dataHora} />
+
+        <TimeSelector
+          time={horaEntregaChave}
+          setTime={setHoraEntregaChave}
+          label="Hora de Entrega da Chave"
+          error={errors.horaEntregaChave}
+        />
+
+        <TimeSelector
+          time={horaSaidaFrota}
+          setTime={setHoraSaidaFrota}
+          label="Hora de Saída da Frota"
+          error={errors.horaSaidaFrota}
+        />
 
         <Autocomplete
           data={frequencias}
@@ -1333,18 +1613,20 @@ const Formulario = ({ navigation }) => {
   }
 
   // Função para calcular o padding do formulário com base no tipo de dispositivo
+
   const getFormPadding = () => {
+    const deviceType = getDeviceType()
     switch (deviceType) {
       case "tablet":
-        return 30
+        return 35
       case "largePhone":
-        return 25
+        return 30
       case "mediumPhone":
-        return 20
+        return 25
       case "smallPhone":
-        return 15
-      default:
         return 20
+      default:
+        return 25
     }
   }
 
@@ -1366,9 +1648,10 @@ const Formulario = ({ navigation }) => {
             keyboardShouldPersistTaps="always"
             nestedScrollEnabled={true}
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             <View style={styles.header}>
-              <Text style={[styles.headerTitle, { fontSize: normalize(24) }]}>Formulário de Coleta</Text>
+              <Text style={[styles.headerTitle, { fontSize: normalize(24) }]}>Soltura de Frotas</Text>
               <View style={styles.headerUnderline} />
             </View>
 
@@ -1387,8 +1670,8 @@ const Formulario = ({ navigation }) => {
             >
               {getFormLayout()}
 
-              {/* Botão de Histórico de Soltura de Rotas */}
-              <Ripple
+              {/* Botão de Histórico de Soltura de Rotas - Estilo atualizado */}
+              <TouchableArea
                 style={[
                   styles.historicoButton,
                   {
@@ -1399,12 +1682,12 @@ const Formulario = ({ navigation }) => {
                 ]}
                 onPress={navigateToHistorico}
               >
-                <View style={styles.buttonBackground}>
-                  <Text style={[styles.historicoButtonText, { fontSize: normalize(16) }]}>
-                    HISTÓRICO DE SOLTURA DE ROTAS
+                <View style={styles.historicoButtonContent}>
+                  <Text style={[styles.historicoButtonText, { fontSize: normalize(14) }]}>
+                    Histórico de Soltura de Frotas
                   </Text>
                 </View>
-              </Ripple>
+              </TouchableArea>
 
               {/* Botão de envio */}
               <Ripple
@@ -1421,7 +1704,7 @@ const Formulario = ({ navigation }) => {
                   {isSubmitting ? (
                     <ActivityIndicator color="white" size="small" />
                   ) : (
-                    <Text style={[styles.submitButtonText, { fontSize: normalize(16) }]}>ENVIAR</Text>
+                    <Text style={[styles.submitButtonText, { fontSize: normalize(14) }]}>Enviar</Text>
                   )}
                 </View>
               </Ripple>
@@ -1431,6 +1714,9 @@ const Formulario = ({ navigation }) => {
 
         {/* Componente de mensagem de sucesso */}
         <SuccessMessage visible={showSuccess} onClose={() => setShowSuccess(false)} />
+
+        {/* Componente para exibir as informações de soltura */}
+        <SolturaInfoModal visible={showSolturaInfo} onClose={() => setShowSolturaInfo(false)} formData={formData} />
       </SafeAreaView>
     </ActiveAutocompleteProvider>
   )
@@ -1654,12 +1940,6 @@ const styles = StyleSheet.create({
     boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
     elevation: 1, // Added for Android
   },
-  coletorName: {
-    flex: 1,
-    color: "#333",
-    fontSize: 14,
-    fontWeight: "500",
-  },
   removeButton: {
     backgroundColor: "#e53935",
     justifyContent: "center",
@@ -1698,27 +1978,29 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     letterSpacing: 1,
   },
-  // Estilos para o botão de histórico
+  // Estilos para o botão de histórico - ATUALIZADO
   historicoButton: {
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 25, // Bordas mais arredondadas
     width: "100%",
     overflow: "hidden",
-    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)",
-    elevation: 3, // Added for Android
+    borderWidth: 2,
+    borderColor: "#8BC34A",
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+    elevation: 2, // Reduced elevation
   },
-  buttonBackground: {
+  historicoButtonContent: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#8BC34A",
+    backgroundColor: "white", // Fundo branco
     justifyContent: "center",
     alignItems: "center",
   },
   historicoButtonText: {
-    color: "white",
+    color: "#8BC34A", // Texto verde
     fontWeight: "bold",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   rippleContainer: {
     overflow: "hidden",
@@ -1783,6 +2065,78 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  // Estilos para o modal de informações de soltura
+  solturaInfoContainer: {
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 20,
+    width: "85%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  solturaHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  solturaTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#8BC34A",
+    marginBottom: 5,
+  },
+  solturaHeaderUnderline: {
+    height: 2,
+    width: 50,
+    backgroundColor: "#8BC34A",
+    borderRadius: 1,
+  },
+  solturaContent: {
+    marginBottom: 20,
+  },
+  solturaRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  solturaLabel: {
+    width: "35%",
+    fontWeight: "bold",
+    color: "#555",
+    fontSize: 14,
+  },
+  solturaValue: {
+    flex: 1,
+    color: "#333",
+    fontSize: 14,
+  },
+  solturaCloseButton: {
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    alignSelf: "center",
+    borderWidth: 1,
+    borderColor: "#8BC34A",
+  },
+  solturaCloseButtonText: {
+    color: "#8BC34A",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  solturaSuccessMessage: {
+    fontSize: 16,
+    color: "#4CAF50",
+    marginTop: 5,
+    marginBottom: 5,
+    fontWeight: "500",
+    textAlign: "center",
   },
 })
 

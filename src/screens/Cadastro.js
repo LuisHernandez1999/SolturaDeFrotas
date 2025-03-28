@@ -22,11 +22,10 @@ import {
   ActivityIndicator,
 } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
-import { cadastrarUser } from "../api/cadastrar" // Import the API function
+import { cadastrarUser } from "../api/cadastrar"
 
-// Função para calcular tamanhos responsivos de forma mais precisa
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
-const scale = SCREEN_WIDTH / 375 // Base para iPhone 8
+const scale = SCREEN_WIDTH / 375 
 
 const normalize = (size) => {
   const newSize = size * scale
@@ -34,17 +33,12 @@ const normalize = (size) => {
   if (Platform.OS === "ios") {
     return Math.round(PixelRatio.roundToNearestPixel(newSize))
   }
-  // Android precisa de um ajuste ligeiramente diferente
   return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2
 }
 
-// Componente de Logo Profissional com tamanho adaptativo
 const ProfessionalLogo = ({ screenHeight, screenWidth }) => {
-  // Tamanho responsivo baseado na altura e largura da tela
   const logoSize = Math.min(screenHeight * 0.1, screenWidth * 0.2)
   const fontSize = logoSize * 0.35
-
-  // Animação para o efeito de brilho
   const shimmerValue = new Animated.Value(0)
 
   React.useEffect(() => {
@@ -620,15 +614,18 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.backgroundGradient}>
         <View style={styles.overlay} />
 
+        {/* FIX: Changed behavior for Android to prevent flickering */}
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardAvoidingView}
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
+          {/* FIX: Added bounces={false} to prevent bouncing which can cause flickering */}
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            bounces={false}
           >
             {/* Logo Profissional */}
             <ProfessionalLogo screenHeight={height} screenWidth={width} />
@@ -768,8 +765,9 @@ export default function RegisterScreen({ navigation }) {
               </View>
             </View>
 
+            {/* FIX: Added extra padding at the bottom to prevent content from jumping */}
             {!isSmallDevice && (
-              <View style={[styles.footer, { marginTop: height * 0.02 }]}>
+              <View style={[styles.footer, { marginTop: height * 0.02, marginBottom: Platform.OS === "android" ? 30 : 10 }]}>
                 <Text style={[styles.footerText, { fontSize: normalize(12) }]}>
                   © 2024 Limpa Gyn • Todos os direitos reservados
                 </Text>
@@ -804,12 +802,13 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
+  // FIX: Updated scrollContent style with increased bottom padding for Android
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 30 : 15,
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === "android" ? 50 : 20, // Increased bottom padding on Android
     paddingHorizontal: 20,
   },
   formContainer: {
@@ -995,4 +994,3 @@ const styles = StyleSheet.create({
     fontSize: normalize(14),
   },
 })
-
