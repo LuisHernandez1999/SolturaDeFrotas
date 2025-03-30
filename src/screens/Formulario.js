@@ -19,8 +19,10 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Alert,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
+import { SolturaService } from "../api/soltura"
 
 // Função para calcular tamanhos responsivos baseados no tipo de dispositivo
 const getDeviceType = () => {
@@ -169,9 +171,9 @@ const Ripple = ({ style, onPress, children }) => {
     setRippleVisible(true)
     Animated.timing(rippleAnim, {
       toValue: 1,
-      duration: 300, // Reduced from 400 for faster feedback
+      duration: 200, // Reduced for faster feedback
       easing: Easing.out(Easing.ease),
-      useNativeDriver: true, // Changed to true for better performance
+      useNativeDriver: true,
     }).start()
 
     // Execute onPress immediately for better responsiveness
@@ -181,8 +183,8 @@ const Ripple = ({ style, onPress, children }) => {
   const handlePressOut = () => {
     Animated.timing(rippleAnim, {
       toValue: 0,
-      duration: 200, // Reduced from 300 for faster feedback
-      useNativeDriver: true, // Changed to true for better performance
+      duration: 150, // Reduced for faster feedback
+      useNativeDriver: true,
     }).start(() => {
       setRippleVisible(false)
     })
@@ -265,13 +267,20 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   // Atualiza dados filtrados quando o valor muda
   useEffect(() => {
     if (value) {
-      const filtered = data.filter((item) => item.toLowerCase().includes(value.toLowerCase()))
-      setFilteredData(filtered)
+      // FIX: Check if data is an array and filter only if it is
+      if (Array.isArray(data)) {
+        const filtered = data.filter(
+          (item) => item && typeof item === "string" && item.toLowerCase().includes(value.toLowerCase()),
+        )
+        setFilteredData(filtered)
 
-      // Mantenha o dropdown aberto se houver dados filtrados
-      if (filtered.length > 0 && isFocused) {
-        setShowDropdown(true)
-        setActiveAutocomplete(id)
+        // Mantenha o dropdown aberto se houver dados filtrados
+        if (filtered.length > 0 && isFocused) {
+          setShowDropdown(true)
+          setActiveAutocomplete(id)
+        }
+      } else {
+        setFilteredData([])
       }
     } else {
       setFilteredData([])
@@ -284,7 +293,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
       setShowDropdown(false)
       Animated.timing(dropdownAnim, {
         toValue: 0,
-        duration: 150, // Reduced for faster response
+        duration: 100, // Reduced for faster response
         useNativeDriver: false,
       }).start()
     }
@@ -293,7 +302,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || value ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -302,7 +311,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -310,7 +319,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
   useEffect(() => {
     Animated.timing(dropdownAnim, {
       toValue: showDropdown && filteredData.length > 0 ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [showDropdown, filteredData])
@@ -337,7 +346,8 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
 
   const handleFocus = () => {
     setIsFocused(true)
-    if (value.length > 0 && filteredData.length > 0) {
+    // FIX: Check if value exists before checking its length
+    if (value && value.length > 0 && filteredData.length > 0) {
       setShowDropdown(true)
       setActiveAutocomplete(id)
     }
@@ -383,7 +393,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [16, 12],
+      outputRange: [14, 12], // Reduced placeholder text size
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
@@ -449,7 +459,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
         >
           <TextInput
             ref={inputRef}
-            style={[styles.animatedInput, { pointerEvents: "auto" }]}
+            style={[styles.animatedInput, { pointerEvents: "auto", fontSize: 16 }]} // Reduced font size
             placeholder={isFocused ? placeholder : ""}
             placeholderTextColor="#999"
             value={value}
@@ -459,7 +469,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {value.length > 0 && (
+          {value && value.length > 0 && (
             <Pressable
               style={[styles.clearButton, { padding: 15 }]} // Larger touch target
               onPress={() => {
@@ -503,19 +513,22 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
 }
 
 // ColetoresSelector reescrito para melhor resposta ao toque
-const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, error }) => {
+const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], maxColetores = 3, label, error }) => {
   const [coletor, setColetor] = useState("")
+  const [filteredColetores, setFilteredColetores] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
   const inputHeight = getInputHeight()
   const borderColorAnim = useRef(new Animated.Value(0)).current
   const labelPosition = useRef(new Animated.Value(coletores.length > 0 || coletor ? 1 : 0)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const inputRef = useRef(null)
+  const dropdownAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || coletores.length > 0 || coletor ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -524,13 +537,46 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
 
+  useEffect(() => {
+    if (coletor) {
+      // FIX: Check if availableColetores is an array and filter only if it is
+      if (Array.isArray(availableColetores)) {
+        const filtered = availableColetores.filter(
+          (item) =>
+            item &&
+            typeof item === "string" &&
+            item.toLowerCase().includes(coletor.toLowerCase()) &&
+            !coletores.includes(item),
+        )
+        setFilteredColetores(filtered)
+
+        if (filtered.length > 0 && isFocused) {
+          setShowDropdown(true)
+        }
+      } else {
+        setFilteredColetores([])
+      }
+    } else {
+      setFilteredColetores([])
+      setShowDropdown(false)
+    }
+  }, [coletor, availableColetores, coletores])
+
+  useEffect(() => {
+    Animated.timing(dropdownAnim, {
+      toValue: showDropdown && filteredColetores.length > 0 ? 1 : 0,
+      duration: 100,
+      useNativeDriver: false,
+    }).start()
+  }, [showDropdown, filteredColetores])
+
   const addColetor = () => {
-    if (coletor.trim() && coletores.length < maxColetores) {
+    if (coletor.trim() && coletores.length < maxColetores && !coletores.includes(coletor.trim())) {
       // Animação de escala ao adicionar
       Animated.sequence([
         Animated.timing(scaleAnim, {
@@ -547,6 +593,20 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
 
       setColetores([...coletores, coletor.trim()])
       setColetor("")
+      setShowDropdown(false)
+
+      // Focus the input again after adding
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
+    }
+  }
+
+  const selectColetor = (item) => {
+    if (coletores.length < maxColetores && !coletores.includes(item)) {
+      setColetores([...coletores, item])
+      setColetor("")
+      setShowDropdown(false)
 
       // Focus the input again after adding
       if (inputRef.current) {
@@ -568,6 +628,17 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
     }
   }
 
+  const handleFocus = () => {
+    setIsFocused(true)
+    if (coletor && coletor.length > 0 && filteredColetores.length > 0) {
+      setShowDropdown(true)
+    }
+  }
+
+  const handleBlur = () => {
+    setIsFocused(false)
+  }
+
   const labelStyle = {
     position: "absolute",
     left: 15,
@@ -577,7 +648,7 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [16, 12],
+      outputRange: [14, 12], // Reduced placeholder text size
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
@@ -595,6 +666,30 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
     inputRange: [0, 1],
     outputRange: ["#ddd", "#8BC34A"],
   })
+
+  const dropdownMaxHeight = dropdownAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 200],
+  })
+
+  const dropdownOpacity = dropdownAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  })
+
+  // Renderização dos itens do dropdown
+  const renderDropdownItems = () => {
+    return filteredColetores.map((item, index) => (
+      <Pressable
+        key={index.toString()}
+        style={({ pressed }) => [styles.dropdownItem, pressed ? { backgroundColor: "#f0f0f0" } : {}]}
+        onPress={() => selectColetor(item)}
+        android_ripple={{ color: "rgba(0, 0, 0, 0.05)" }}
+      >
+        <Text style={styles.dropdownItemText}>{item}</Text>
+      </Pressable>
+    ))
+  }
 
   return (
     <View style={styles.inputWrapper}>
@@ -617,13 +712,13 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
         >
           <TextInput
             ref={inputRef}
-            style={[styles.animatedInput, { flex: 1 }]}
+            style={[styles.animatedInput, { flex: 1, fontSize: 16 }]} // Reduced font size
             placeholder={isFocused ? "Nome do coletor" : ""}
             placeholderTextColor="#999"
             value={coletor}
             onChangeText={setColetor}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           />
           <Pressable
             style={[
@@ -647,6 +742,23 @@ const ColetoresSelector = ({ coletores, setColetores, maxColetores = 3, label, e
       </Pressable>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {/* Dropdown para seleção de coletores */}
+      {showDropdown && filteredColetores.length > 0 && (
+        <Animated.View
+          style={[
+            styles.dropdownContainer,
+            {
+              maxHeight: dropdownMaxHeight,
+              opacity: dropdownOpacity,
+            },
+          ]}
+        >
+          <ScrollView style={styles.dropdown} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
+            {renderDropdownItems()}
+          </ScrollView>
+        </Animated.View>
+      )}
 
       <Animated.View style={[styles.coletoresList, { transform: [{ scale: scaleAnim }] }]}>
         {coletores.map((item, index) => (
@@ -690,7 +802,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || value ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -699,7 +811,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -740,7 +852,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [16, 12],
+      outputRange: [14, 12], // Reduced placeholder text size
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
@@ -780,7 +892,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
         >
           <TextInput
             ref={inputRef}
-            style={styles.animatedInput}
+            style={[styles.animatedInput, { fontSize: 16 }]} // Reduced font size
             placeholder={isFocused ? "(XX) XXXXX-XXXX" : ""}
             placeholderTextColor="#999"
             value={value}
@@ -810,7 +922,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || date ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -819,7 +931,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 150, // Reduced for faster response
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -848,7 +960,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
       // Após selecionar a data, abre o seletor de hora
       setTimeout(() => {
         setShowTimePicker(true)
-      }, 100) // Reduced from 300 for faster response
+      }, 50) // Reduced from 100 for faster response
     }
   }
 
@@ -876,7 +988,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [16, 12],
+      outputRange: [14, 12], // Reduced placeholder text size
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
@@ -919,7 +1031,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
               styles.dateTimeText,
               {
                 color: date ? "#333" : "#999",
-                fontSize: normalize(16),
+                fontSize: normalize(14), // Reduced font size
               },
             ]}
           >
@@ -955,7 +1067,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
   useEffect(() => {
     Animated.timing(labelPosition, {
       toValue: isFocused || time ? 1 : 0,
-      duration: 150,
+      duration: 100, // Reduced for faster response
       easing: Easing.bezier(0.4, 0.2, 0.2, 1),
       useNativeDriver: false,
     }).start()
@@ -964,7 +1076,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
   useEffect(() => {
     Animated.timing(borderColorAnim, {
       toValue: isFocused ? 1 : 0,
-      duration: 150,
+      duration: 100, // Reduced for faster response
       useNativeDriver: false,
     }).start()
   }, [isFocused, borderColorAnim])
@@ -999,7 +1111,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [16, 12],
+      outputRange: [14, 12], // Reduced placeholder text size
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
@@ -1042,7 +1154,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
               styles.dateTimeText,
               {
                 color: time ? "#333" : "#999",
-                fontSize: normalize(16),
+                fontSize: normalize(14), // Reduced font size
               },
             ]}
           >
@@ -1211,89 +1323,15 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
   )
 }
 
-// Modificar o handleSubmit para não mostrar a mensagem de sucesso
-// Aumentar a altura do formulário ajustando o padding
-// Componente de mensagem de sucesso
-const SuccessMessage = ({ visible, onClose }) => {
-  const scaleAnim = useRef(new Animated.Value(0.5)).current
-  const opacityAnim = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start()
-
-      // Auto-fechar após 3 segundos
-      const timer = setTimeout(() => {
-        handleClose()
-      }, 3000)
-
-      return () => clearTimeout(timer)
-    }
-  }, [visible])
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0.5,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose && onClose()
-    })
-  }
-
-  if (!visible) return null
-
-  return (
-    <Modal transparent visible={visible} animationType="none">
-      <View style={styles.successOverlay}>
-        <Animated.View
-          style={[
-            styles.successContainer,
-            {
-              opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <View style={styles.successIconContainer}>
-            <Text style={styles.successIcon}>✓</Text>
-          </View>
-          <Text style={styles.successTitle}>Sucesso!</Text>
-          <Text style={styles.successText}>Formulário enviado com sucesso!</Text>
-          <Pressable
-            style={styles.successCloseButton}
-            onPress={handleClose}
-            android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
-          >
-            <Text style={styles.successCloseButtonText}>OK</Text>
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Modal>
-  )
-}
-
 // Componente principal do formulário
 const Formulario = ({ navigation }) => {
+  // Remove the header from React Navigation
+  React.useEffect(() => {
+    navigation?.setOptions?.({
+      headerShown: false, // This will hide the header from React Navigation
+    })
+  }, [navigation])
+
   // Estados para os campos do formulário
   const [motorista, setMotorista] = useState("")
   const [prefixo, setPrefixo] = useState("")
@@ -1308,23 +1346,74 @@ const Formulario = ({ navigation }) => {
   const [horaSaidaFrota, setHoraSaidaFrota] = useState(null)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
   const [showSolturaInfo, setShowSolturaInfo] = useState(false)
   const [formData, setFormData] = useState({})
   const formScaleAnim = useRef(new Animated.Value(0.95)).current
   const formOpacityAnim = useRef(new Animated.Value(0)).current
 
-  const motoristas = ["João", "Maria", "José"]
-  const prefixos = ["ABC-1234", "DEF-5678", "GHI-9012"]
-  const frequencias = ["Diária", "Semanal", "Mensal"]
-  const setores = ["Norte", "Sul", "Leste", "Oeste"]
-  const lideres = ["Carlos", "Ana", "Paulo"]
+  // Estados para dados da API
+  const [motoristasData, setMotoristasData] = useState([])
+  const [veiculosData, setVeiculosData] = useState([])
+  const [coletoresData, setColetoresData] = useState([])
+  const [frequenciasData, setFrequenciasData] = useState([])
+  const [setoresData, setSetoresData] = useState([])
+  const [lideresData, setLideresData] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadingError, setLoadingError] = useState(null)
 
   const { width, height } = useWindowDimensions()
   const orientation = useOrientation()
   const isLandscape = orientation === "LANDSCAPE"
   const deviceType = getDeviceType()
   const isTablet = deviceType === "tablet"
+
+  // Carregar dados da API usando as URLs específicas
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      setLoadingError(null)
+
+      try {
+        console.log("Iniciando carregamento de dados...")
+
+        // Buscar dados de diferentes endpoints em paralelo
+        const [motoristasResponse, coletoresResponse, veiculosResponse, outrosDados] = await Promise.all([
+          SolturaService.getMotoristas(),
+          SolturaService.getColetores(),
+          SolturaService.getVeiculos(),
+          SolturaService.getOutrosDados(),
+        ])
+
+        // Extrair nomes dos motoristas
+        const motoristasNomes = motoristasResponse.map((motorista) => motorista.nome)
+        console.log("Nomes de motoristas processados:", motoristasNomes.length)
+        setMotoristasData(motoristasNomes)
+
+        // Extrair nomes dos coletores
+        const coletoresNomes = coletoresResponse.map((coletor) => coletor.nome)
+        console.log("Nomes de coletores processados:", coletoresNomes.length)
+        setColetoresData(coletoresNomes)
+
+        // Veículos já vêm como array de strings (placas)
+        console.log("Placas de veículos processadas:", veiculosResponse.length)
+        setVeiculosData(veiculosResponse)
+
+        // Definir outros dados
+        setFrequenciasData(outrosDados.frequencias)
+        setSetoresData(outrosDados.setores)
+        setLideresData(outrosDados.lideres)
+
+        console.log("Carregamento de dados concluído com sucesso")
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+        setLoadingError("Falha ao carregar dados. Verifique sua conexão e tente novamente.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   useEffect(() => {
     Animated.timing(formOpacityAnim, {
@@ -1381,39 +1470,86 @@ const Formulario = ({ navigation }) => {
     setErrors({})
   }
 
-  // Add the handleSubmit function here, inside the component
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
       setIsSubmitting(true)
 
-      // Salvar os dados do formulário para exibir no modal
-      const data = {
-        motorista,
-        prefixo,
-        dataHora,
-        frequencia,
-        setor,
-        coletores,
-        celular,
-        lider,
-        horaEntregaChave,
-        horaSaidaFrota,
-      }
+      try {
+        console.log("Enviando formulário...")
 
-      setFormData(data)
+        // Preparar dados para envio
+        const solturaData = {
+          motorista: motorista,
+          prefixo: prefixo,
+          coletores: coletores,
+          frequencia: frequencia,
+          setor: setor,
+          celular: celular,
+          lider: lider,
+          hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
+          hora_entrega_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
+        }
 
-      setTimeout(() => {
-        setIsSubmitting(false)
-        // Mostrar diretamente o modal de informações de soltura
+        // Enviar para a API
+        const response = await SolturaService.criarSoltura(solturaData)
+        console.log("Resposta do servidor após envio:", response)
+
+        // Salvar os dados do formulário para exibir no modal
+        setFormData({
+          motorista,
+          prefixo,
+          dataHora,
+          frequencia,
+          setor,
+          coletores,
+          celular,
+          lider,
+          horaEntregaChave,
+          horaSaidaFrota,
+          ...response, // Adicionar dados da resposta da API
+        })
+
+        // Mostrar modal de sucesso
         setShowSolturaInfo(true)
-        console.log(data)
+
+        // Resetar formulário
         resetForm()
-      }, 1500)
+      } catch (error) {
+        console.error("Erro ao enviar formulário:", error)
+        Alert.alert("Erro", error.message || "Ocorreu um erro ao registrar a soltura. Tente novamente.", [
+          { text: "OK" },
+        ])
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
   const navigateToHistorico = () => {
-    navigation.navigate("FormularioHistorico")
+    navigation?.navigate("FormularioHistorico")
+  }
+
+  // Renderizar tela de carregamento
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#8BC34A" />
+        <Text style={styles.loadingText}>Carregando dados...</Text>
+      </SafeAreaView>
+    )
+  }
+
+  // Renderizar erro de carregamento
+  if (loadingError) {
+    return (
+      <SafeAreaView style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Erro ao carregar</Text>
+        <Text style={styles.errorMessage}>{loadingError}</Text>
+        <Pressable style={styles.retryButton} onPress={() => navigation.replace("Formulario")}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </Pressable>
+      </SafeAreaView>
+    )
   }
 
   const getFormLayout = () => {
@@ -1422,7 +1558,7 @@ const Formulario = ({ navigation }) => {
         <View style={styles.twoColumnLayout}>
           <View style={styles.column}>
             <Autocomplete
-              data={motoristas}
+              data={motoristasData}
               value={motorista}
               onChangeText={setMotorista}
               onSelect={setMotorista}
@@ -1434,7 +1570,7 @@ const Formulario = ({ navigation }) => {
             />
 
             <Autocomplete
-              data={prefixos}
+              data={veiculosData}
               value={prefixo}
               onChangeText={setPrefixo}
               onSelect={setPrefixo}
@@ -1455,7 +1591,7 @@ const Formulario = ({ navigation }) => {
             />
 
             <Autocomplete
-              data={frequencias}
+              data={frequenciasData}
               value={frequencia}
               onChangeText={setFrequencia}
               onSelect={setFrequencia}
@@ -1469,7 +1605,7 @@ const Formulario = ({ navigation }) => {
 
           <View style={styles.column}>
             <Autocomplete
-              data={setores}
+              data={setoresData}
               value={setor}
               onChangeText={setSetor}
               onSelect={setSetor}
@@ -1490,6 +1626,7 @@ const Formulario = ({ navigation }) => {
             <ColetoresSelector
               coletores={coletores}
               setColetores={setColetores}
+              availableColetores={coletoresData}
               maxColetores={3}
               label="Coletores (máx. 3)"
               error={errors.coletores}
@@ -1498,7 +1635,7 @@ const Formulario = ({ navigation }) => {
             <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
 
             <Autocomplete
-              data={lideres}
+              data={lideresData}
               value={lider}
               onChangeText={setLider}
               onSelect={setLider}
@@ -1515,7 +1652,7 @@ const Formulario = ({ navigation }) => {
     return (
       <>
         <Autocomplete
-          data={motoristas}
+          data={motoristasData}
           value={motorista}
           onChangeText={setMotorista}
           onSelect={setMotorista}
@@ -1527,7 +1664,7 @@ const Formulario = ({ navigation }) => {
         />
 
         <Autocomplete
-          data={prefixos}
+          data={veiculosData}
           value={prefixo}
           onChangeText={setPrefixo}
           onSelect={setPrefixo}
@@ -1555,7 +1692,7 @@ const Formulario = ({ navigation }) => {
         />
 
         <Autocomplete
-          data={frequencias}
+          data={frequenciasData}
           value={frequencia}
           onChangeText={setFrequencia}
           onSelect={setFrequencia}
@@ -1567,7 +1704,7 @@ const Formulario = ({ navigation }) => {
         />
 
         <Autocomplete
-          data={setores}
+          data={setoresData}
           value={setor}
           onChangeText={setSetor}
           onSelect={setSetor}
@@ -1581,6 +1718,7 @@ const Formulario = ({ navigation }) => {
         <ColetoresSelector
           coletores={coletores}
           setColetores={setColetores}
+          availableColetores={coletoresData}
           maxColetores={3}
           label="Coletores (máx. 3)"
           error={errors.coletores}
@@ -1589,7 +1727,7 @@ const Formulario = ({ navigation }) => {
         <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
 
         <Autocomplete
-          data={lideres}
+          data={lideresData}
           value={lider}
           onChangeText={setLider}
           onSelect={setLider}
@@ -1613,7 +1751,6 @@ const Formulario = ({ navigation }) => {
   }
 
   // Função para calcular o padding do formulário com base no tipo de dispositivo
-
   const getFormPadding = () => {
     const deviceType = getDeviceType()
     switch (deviceType) {
@@ -1633,7 +1770,7 @@ const Formulario = ({ navigation }) => {
   return (
     <ActiveAutocompleteProvider>
       <SafeAreaView style={styles.safeAreaContainer}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
         <View style={styles.backgroundContainer} />
 
@@ -1651,7 +1788,7 @@ const Formulario = ({ navigation }) => {
             bounces={false}
           >
             <View style={styles.header}>
-              <Text style={[styles.headerTitle, { fontSize: normalize(24) }]}>Soltura de Frotas</Text>
+              <Text style={[styles.headerTitle, { fontSize: normalize(28) }]}>Soltura de Frotas</Text>
               <View style={styles.headerUnderline} />
             </View>
 
@@ -1675,7 +1812,7 @@ const Formulario = ({ navigation }) => {
                 style={[
                   styles.historicoButton,
                   {
-                    height: getButtonHeight(),
+                    height: getButtonHeight() * 1.2,
                     marginTop: getResponsiveSize(20),
                     marginBottom: getResponsiveSize(15),
                   },
@@ -1683,7 +1820,7 @@ const Formulario = ({ navigation }) => {
                 onPress={navigateToHistorico}
               >
                 <View style={styles.historicoButtonContent}>
-                  <Text style={[styles.historicoButtonText, { fontSize: normalize(14) }]}>
+                  <Text style={[styles.historicoButtonText, { fontSize: normalize(18) }]}>
                     Histórico de Soltura de Frotas
                   </Text>
                 </View>
@@ -1694,7 +1831,7 @@ const Formulario = ({ navigation }) => {
                 style={[
                   styles.submitButton,
                   {
-                    height: getButtonHeight(),
+                    height: getButtonHeight() * 1.2,
                     marginTop: getResponsiveSize(10),
                   },
                 ]}
@@ -1702,18 +1839,15 @@ const Formulario = ({ navigation }) => {
               >
                 <View style={styles.submitButtonBackground}>
                   {isSubmitting ? (
-                    <ActivityIndicator color="white" size="small" />
+                    <ActivityIndicator color="white" size="large" />
                   ) : (
-                    <Text style={[styles.submitButtonText, { fontSize: normalize(14) }]}>Enviar</Text>
+                    <Text style={[styles.submitButtonText, { fontSize: normalize(18) }]}>Enviar</Text>
                   )}
                 </View>
               </Ripple>
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
-
-        {/* Componente de mensagem de sucesso */}
-        <SuccessMessage visible={showSuccess} onClose={() => setShowSuccess(false)} />
 
         {/* Componente para exibir as informações de soltura */}
         <SolturaInfoModal visible={showSolturaInfo} onClose={() => setShowSolturaInfo(false)} formData={formData} />
@@ -1730,7 +1864,7 @@ const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
     backgroundColor: "#ffffff",
-    paddingTop: 0, // Remova o padding dinâmico
+    paddingTop: 0, // Removed dynamic padding
   },
   backgroundContainer: {
     position: "absolute",
@@ -1749,13 +1883,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 15,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 30 : 15,
-    paddingBottom: 30, // Adicionar padding na parte inferior para evitar flickering
+    paddingBottom: 30, // Added padding at the bottom to avoid flickering
     alignItems: "center",
   },
   header: {
     width: "100%",
     alignItems: "center",
+    marginTop: 20, // Added to compensate for header removal
     marginBottom: 25,
   },
   headerTitle: {
@@ -1772,11 +1906,11 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: "white",
-    boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.15)",
+    boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-    elevation: 3, // Added for Android
+    borderColor: "rgba(0,0,0,0.08)",
+    elevation: 5,
   },
   twoColumnLayout: {
     flexDirection: "row",
@@ -1823,15 +1957,15 @@ const styles = StyleSheet.create({
   animatedInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
+    borderWidth: 2,
+    borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    elevation: 2, // Added for Android
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.5,
   },
   input: {
     flex: 1,
@@ -1842,7 +1976,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333",
-    fontSize: 16,
+    fontSize: 16, // Reduced font size
+    fontWeight: "500",
   },
   clearButton: {
     padding: 5,
@@ -1860,39 +1995,43 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 1000,
     marginTop: 5,
-    borderRadius: 10,
+    borderRadius: 15,
     overflow: "hidden",
-    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
+    boxShadow: "0px 6px 12px rgba(0, 0, 0, 0.3)",
   },
   dropdown: {
     backgroundColor: "white",
     borderWidth: 1,
-    borderColor: "#eee",
-    borderRadius: 10,
+    borderColor: "#ddd",
+    borderRadius: 15,
     maxHeight: 200,
+    elevation: 5,
   },
   dropdownItem: {
-    padding: 14,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   dropdownItemText: {
     color: "#333",
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "500",
   },
   dateTimeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
+    borderWidth: 2,
+    borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
     justifyContent: "space-between",
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)",
-    elevation: 2, // Added for Android
+    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
+    elevation: 4,
   },
   dateTimeText: {
     flex: 1,
+    fontSize: 16, // Reduced font size
+    fontWeight: "500",
   },
   calendarIcon: {
     padding: 5,
@@ -1906,20 +2045,20 @@ const styles = StyleSheet.create({
   coletorInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
+    borderWidth: 2,
+    borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.05)",
-    elevation: 2, // Added for Android
+    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
+    elevation: 4,
   },
   addButton: {
     backgroundColor: "#8BC34A",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.2)",
-    elevation: 3, // Added for Android
+    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.25)",
+    elevation: 4,
   },
   addButtonText: {
     color: "white",
@@ -1932,20 +2071,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#eee",
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
-    elevation: 1, // Added for Android
+    borderColor: "#ddd",
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.15)",
+    elevation: 2,
+  },
+  coletorName: {
+    flex: 1,
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "500",
   },
   removeButton: {
     backgroundColor: "#e53935",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.2)",
-    elevation: 2, // Added for Android
+    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.25)",
+    elevation: 3,
   },
   removeButtonText: {
     color: "white",
@@ -1961,10 +2106,10 @@ const styles = StyleSheet.create({
   submitButton: {
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 15,
     overflow: "hidden",
-    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.2)",
-    elevation: 3, // Added for Android
+    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
+    elevation: 5,
   },
   submitButtonBackground: {
     width: "100%",
@@ -1987,8 +2132,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 2,
     borderColor: "#8BC34A",
-    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
-    elevation: 2, // Reduced elevation
+    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
+    elevation: 3,
   },
   historicoButtonContent: {
     width: "100%",
@@ -2137,6 +2282,48 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontWeight: "500",
     textAlign: "center",
+  },
+  // Estilos para telas de carregamento e erro
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: "#666",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#e53935",
+    marginBottom: 10,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#8BC34A",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 })
 
