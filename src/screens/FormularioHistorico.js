@@ -20,6 +20,7 @@ import {
   useWindowDimensions,
   TextInput,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native"
 // Add useFocusEffect import
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
@@ -590,7 +591,10 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
                       disabled={!newColetor || editedRota.coletores.includes(newColetor)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Text style={styles.addColetorButtonText}>+</Text>
+                      <View style={styles.plusIcon}>
+                        <View style={styles.plusHorizontal} />
+                        <View style={styles.plusVertical} />
+                      </View>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -601,7 +605,9 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
                       <Text style={styles.coletorText}>{coletor}</Text>
                       {isEditing && (
                         <TouchableOpacity style={styles.removeColetorButton} onPress={() => removeColetor(index)}>
-                          <Text style={styles.removeColetorButtonText}>✕</Text>
+                          <View style={styles.minusIcon}>
+                            <View style={styles.minusHorizontal} />
+                          </View>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -689,6 +695,7 @@ export default function HistoricoSoltura() {
   const [selectedRota, setSelectedRota] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [rotasData, setRotasData] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const isSmallScreen = screenWidth < 360
   const padding = getResponsivePadding()
@@ -704,75 +711,81 @@ export default function HistoricoSoltura() {
 
   // Inicializar dados de exemplo
   useEffect(() => {
-    const currentDate = getCurrentDate()
-    const initialData = [
-      {
-        id: "1",
-        data: currentDate,
-        hora: "08:30",
-        motorista: "João Silva",
-        prefixo: "ABC-1234",
-        setor: "Norte",
-        coletores: ["Pedro Santos", "Ana Costa"],
-        frequencia: "Diária",
-        celular: "(62) 98765-4321",
-        lider: "Roberto Alves",
-        observacoes: "Rota iniciada sem intercorrências",
-      },
-      {
-        id: "2",
-        data: currentDate,
-        hora: "09:15",
-        motorista: "Maria Oliveira",
-        prefixo: "DEF-5678",
-        setor: "Sul",
-        coletores: ["Carlos Ferreira"],
-        frequencia: "Semanal",
-        celular: "(62) 91234-5678",
-        lider: "Fernanda Lima",
-        observacoes: "Atraso devido a congestionamento",
-      },
-      {
-        id: "3",
-        data: currentDate,
-        hora: "10:45",
-        motorista: "Pedro Santos",
-        prefixo: "GHI-9012",
-        setor: "Leste",
-        coletores: ["Ana Costa", "João Silva", "Maria Oliveira"],
-        frequencia: "Diária",
-        celular: "(62) 99876-5432",
-        lider: "Marcelo Souza",
-        observacoes: "",
-      },
-      {
-        id: "4",
-        data: currentDate,
-        hora: "11:30",
-        motorista: "Ana Costa",
-        prefixo: "JKL-3456",
-        setor: "Oeste",
-        coletores: ["Carlos Ferreira", "Pedro Santos"],
-        frequencia: "Quinzenal",
-        celular: "(62) 98888-7777",
-        lider: "Juliana Pereira",
-        observacoes: "Veículo precisou de manutenção durante o percurso",
-      },
-      {
-        id: "5",
-        data: currentDate,
-        hora: "13:00",
-        motorista: "Carlos Ferreira",
-        prefixo: "MNO-7890",
-        setor: "Centro",
-        coletores: ["João Silva"],
-        frequencia: "Diária",
-        celular: "(62) 97777-8888",
-        lider: "Roberto Alves",
-        observacoes: "",
-      },
-    ]
-    setRotasData(initialData)
+    // Simulate loading data
+    setIsLoading(true)
+
+    setTimeout(() => {
+      const currentDate = getCurrentDate()
+      const initialData = [
+        {
+          id: "1",
+          data: currentDate,
+          hora: "08:30",
+          motorista: "João Silva",
+          prefixo: "ABC-1234",
+          setor: "Norte",
+          coletores: ["Pedro Santos", "Ana Costa"],
+          frequencia: "Diária",
+          celular: "(62) 98765-4321",
+          lider: "Roberto Alves",
+          observacoes: "Rota iniciada sem intercorrências",
+        },
+        {
+          id: "2",
+          data: currentDate,
+          hora: "09:15",
+          motorista: "Maria Oliveira",
+          prefixo: "DEF-5678",
+          setor: "Sul",
+          coletores: ["Carlos Ferreira"],
+          frequencia: "Semanal",
+          celular: "(62) 91234-5678",
+          lider: "Fernanda Lima",
+          observacoes: "Atraso devido a congestionamento",
+        },
+        {
+          id: "3",
+          data: currentDate,
+          hora: "10:45",
+          motorista: "Pedro Santos",
+          prefixo: "GHI-9012",
+          setor: "Leste",
+          coletores: ["Ana Costa", "João Silva", "Maria Oliveira"],
+          frequencia: "Diária",
+          celular: "(62) 99876-5432",
+          lider: "Marcelo Souza",
+          observacoes: "",
+        },
+        {
+          id: "4",
+          data: currentDate,
+          hora: "11:30",
+          motorista: "Ana Costa",
+          prefixo: "JKL-3456",
+          setor: "Oeste",
+          coletores: ["Carlos Ferreira", "Pedro Santos"],
+          frequencia: "Quinzenal",
+          celular: "(62) 98888-7777",
+          lider: "Juliana Pereira",
+          observacoes: "Veículo precisou de manutenção durante o percurso",
+        },
+        {
+          id: "5",
+          data: currentDate,
+          hora: "13:00",
+          motorista: "Carlos Ferreira",
+          prefixo: "MNO-7890",
+          setor: "Centro",
+          coletores: ["João Silva"],
+          frequencia: "Diária",
+          celular: "(62) 97777-8888",
+          lider: "Roberto Alves",
+          observacoes: "",
+        },
+      ]
+      setRotasData(initialData)
+      setIsLoading(false)
+    }, 1500)
   }, [])
 
   const openModal = (rota) => {
@@ -910,6 +923,18 @@ export default function HistoricoSoltura() {
   const safeAreaPadding =
     Platform.OS === "ios" ? { paddingTop: 50, paddingBottom: 30 } : { paddingTop: 40, paddingBottom: 20 }
 
+  // Render loading screen if data is still loading
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingScreenContainer}>
+        <View style={styles.loadingScreenContent}>
+          <ActivityIndicator size="large" color="#8BC34A" />
+          <Text style={styles.loadingScreenText}>Carregando histórico...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -941,7 +966,7 @@ export default function HistoricoSoltura() {
                 },
               ]}
             >
-              Rotas soltas hoje
+              Histórico de Soltura de Frota
             </Text>
             <View style={styles.titleUnderline} />
           </View>
@@ -986,7 +1011,6 @@ export default function HistoricoSoltura() {
             ]}
             textStyle={[styles.backToFormButtonText, { fontSize: normalize(isSmallScreen ? 13 : 15) }]}
             onPress={navigateToFormulario}
-            icon={<Text style={styles.buttonIcon}>↩</Text>}
           >
             VOLTAR PARA O FORMULÁRIO
           </RippleButton>
@@ -1020,7 +1044,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 25,
+    paddingBottom: 15,
   },
   titleContainer: {
     alignItems: "center",
@@ -1044,7 +1068,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backButtonText: {
-    fontSize: normalize(40),
+    fontSize: normalize(24),
     color: "#8BC34A",
     fontWeight: "bold",
   },
@@ -1142,7 +1166,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#8BC34A",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
@@ -1286,7 +1310,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 25,
     width: "100%",
     alignSelf: "center",
     marginTop: 5,
@@ -1320,8 +1344,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 1.5,
+    borderColor: "#666",
     borderRadius: 8,
     backgroundColor: "#fff",
     paddingHorizontal: 10,
@@ -1410,25 +1434,49 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 101, // Higher than autocomplete
   },
-  addColetorButtonText: {
-    color: "white",
-    fontSize: normalize(20),
-    fontWeight: "bold",
+  // Plus icon styles
+  plusIcon: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  plusHorizontal: {
+    width: 14,
+    height: 2,
+    backgroundColor: "white",
+    position: "absolute",
+  },
+  plusVertical: {
+    width: 2,
+    height: 14,
+    backgroundColor: "white",
+    position: "absolute",
+  },
+  // Minus icon styles
+  minusIcon: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  minusHorizontal: {
+    width: 12,
+    height: 2,
+    backgroundColor: "white",
+    position: "absolute",
   },
   removeColetorButton: {
     backgroundColor: "#e53935",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 10,
     zIndex: 20,
-  },
-  removeColetorButtonText: {
-    color: "white",
-    fontSize: normalize(12),
-    fontWeight: "bold",
   },
   observacoesInput: {
     backgroundColor: "#f5f5f5",
@@ -1475,7 +1523,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 25,
     width: "48%",
     borderWidth: 1,
     borderColor: "#ddd",
@@ -1492,7 +1540,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 25,
     width: "48%",
     height: 45,
   },
@@ -1505,6 +1553,22 @@ const styles = StyleSheet.create({
   dropdownModalOverlay: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  // Loading screen styles
+  loadingScreenContainer: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  loadingScreenContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingScreenText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
   },
 })
 

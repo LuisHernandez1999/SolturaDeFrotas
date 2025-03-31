@@ -1,18 +1,12 @@
-// API Service for Soltura registration
 import axios from "axios"
 
-const BASE_URL = "http://192.168.0.53:8000/api"
-
-// API service for Soltura
+const BASE_URL = "http://192.168.0.76:8000/api"
 export const SolturaService = {
-  // Get motoristas from specific endpoint
   getMotoristas: async () => {
     try {
       console.log("Buscando motoristas...")
       const response = await axios.get(`${BASE_URL}/colaboradores/colaboradores_lista_motoristas_ativos/`)
       const motoristasResponse = response.data.colaboradores_lista;
-      
-      // Verifique se motoristasResponse é um array antes de chamar .map()
       if (Array.isArray(motoristasResponse)) {
         console.log("Motoristas recebidos:", motoristasResponse)
         return motoristasResponse;
@@ -70,9 +64,7 @@ export const SolturaService = {
       throw new Error("Falha ao buscar veículos. " + (error.response?.data?.message || error.message));
     }
   },
-  
 
-  // Get frequencias, setores, and lideres from criar soltura endpoint
   getOutrosDados: async () => {
     try {
       console.log("Buscando outros dados (frequências, setores, líderes)...")

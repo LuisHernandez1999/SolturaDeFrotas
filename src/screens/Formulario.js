@@ -213,11 +213,9 @@ const Ripple = ({ style, onPress, children }) => {
           style={[
             styles.ripple,
             {
-              left: ripplePosition.x - rippleSize._value / 2,
-              top: ripplePosition.y - rippleSize._value / 2,
-              width: rippleSize,
-              height: rippleSize,
-              borderRadius: rippleSize._value / 2,
+              left: ripplePosition.x - rippleSize.__getValue() / 2,
+              top: ripplePosition.y - rippleSize.__getValue() / 2,
+              transform: [{ scale: rippleAnim }],
               opacity: rippleOpacity,
             },
           ]}
@@ -409,7 +407,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ddd", "#8BC34A"],
+    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
   })
 
   const dropdownMaxHeight = dropdownAnim.interpolate({
@@ -453,6 +451,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
             styles.animatedInputContainer,
             {
               borderColor,
+              borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
             },
           ]}
@@ -664,7 +663,7 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ddd", "#8BC34A"],
+    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
   })
 
   const dropdownMaxHeight = dropdownAnim.interpolate({
@@ -706,6 +705,7 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
             styles.coletorInputContainer,
             {
               borderColor,
+              borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
             },
           ]}
@@ -725,10 +725,9 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
               styles.addButton,
               {
                 opacity: coletores.length >= maxColetores ? 0.5 : 1,
-                width: getResponsiveSize(40), // Increased size
-                height: getResponsiveSize(40), // Increased size
-                borderRadius: getResponsiveSize(20), // Increased size
-                padding: 10, // Added padding for larger touch area
+                width: getResponsiveSize(36), // Reduced size for more minimalist look
+                height: getResponsiveSize(36), // Reduced size for more minimalist look
+                borderRadius: getResponsiveSize(18), // Adjusted for circle
               },
             ]}
             onPress={addColetor}
@@ -736,7 +735,11 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
           >
-            <Text style={[styles.addButtonText, { fontSize: normalize(20) }]}>+</Text>
+            {/* Replaced text with a more minimalist plus icon */}
+            <View style={styles.plusIcon}>
+              <View style={styles.plusHorizontal} />
+              <View style={styles.plusVertical} />
+            </View>
           </Pressable>
         </Animated.View>
       </Pressable>
@@ -768,17 +771,19 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
               style={[
                 styles.removeButton,
                 {
-                  width: getResponsiveSize(32), // Increased size
-                  height: getResponsiveSize(32), // Increased size
-                  borderRadius: getResponsiveSize(16), // Increased size
-                  padding: 5, // Added padding for larger touch area
+                  width: getResponsiveSize(28), // Reduced size for more minimalist look
+                  height: getResponsiveSize(28), // Reduced size for more minimalist look
+                  borderRadius: getResponsiveSize(14), // Adjusted for circle
                 },
               ]}
               onPress={() => removeColetor(index)}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
             >
-              <Text style={styles.removeButtonText}>×</Text>
+              {/* Replaced text with a more minimalist minus icon */}
+              <View style={styles.minusIcon}>
+                <View style={styles.minusHorizontal} />
+              </View>
             </Pressable>
           </View>
         ))}
@@ -868,7 +873,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ddd", "#8BC34A"],
+    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
   })
 
   return (
@@ -886,6 +891,7 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
             styles.animatedInputContainer,
             {
               borderColor,
+              borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
             },
           ]}
@@ -1004,7 +1010,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ddd", "#8BC34A"],
+    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
   })
 
   return (
@@ -1022,6 +1028,7 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
             styles.dateTimeContainer,
             {
               borderColor,
+              borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
             },
           ]}
@@ -1127,7 +1134,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#ddd", "#8BC34A"],
+    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
   })
 
   return (
@@ -1145,6 +1152,7 @@ const TimeSelector = ({ time, setTime, label, error }) => {
             styles.dateTimeContainer,
             {
               borderColor,
+              borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
             },
           ]}
@@ -1298,16 +1306,6 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
                 {formData.coletores && formData.coletores.length > 0 ? formData.coletores.join(", ") : "N/A"}
               </Text>
             </View>
-
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Celular:</Text>
-              <Text style={styles.solturaValue}>{formData.celular || "N/A"}</Text>
-            </View>
-
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Líder:</Text>
-              <Text style={styles.solturaValue}>{formData.lider || "N/A"}</Text>
-            </View>
           </View>
 
           <Pressable
@@ -1317,6 +1315,171 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
           >
             <Text style={styles.solturaCloseButtonText}>OK</Text>
           </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+// Loading screen for history
+const HistoryLoadingScreen = ({ visible, onClose }) => {
+  const [progress, setProgress] = useState(0)
+  const progressAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.9)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
+  const spinAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (visible) {
+      // Reset progress
+      setProgress(0)
+      progressAnim.setValue(0)
+
+      // Animate entrance
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
+      // Start spinning animation
+      Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start()
+
+      // Animate progress
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          const newProgress = prev + 5
+          if (newProgress >= 100) {
+            clearInterval(progressInterval)
+
+            // When progress reaches 100%, close after a delay
+            setTimeout(() => {
+              handleClose()
+            }, 500)
+
+            return 100
+          }
+          return newProgress
+        })
+      }, 100)
+
+      return () => clearInterval(progressInterval)
+    }
+  }, [visible])
+
+  // Update animated progress value when progress changes
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progress / 100,
+      duration: 100,
+      useNativeDriver: false,
+    }).start()
+  }, [progress])
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose && onClose()
+    })
+  }
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  })
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  })
+
+  if (!visible) return null
+
+  return (
+    <Modal transparent visible={visible} animationType="none">
+      <View style={styles.loadingOverlay}>
+        <Animated.View
+          style={[
+            styles.loadingContainer,
+            {
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.loadingTitle}>Histórico de Soltura de Frota</Text>
+          <View style={styles.loadingTitleUnderline} />
+
+          <View style={styles.spinnerContainer}>
+            <Animated.View
+              style={[
+                styles.spinner,
+                {
+                  transform: [{ rotate: spin }],
+                },
+              ]}
+            >
+              <View style={styles.spinnerInner} />
+            </Animated.View>
+            <Text style={styles.loadingIcon}>📋</Text>
+          </View>
+
+          <View style={styles.progressBarContainer}>
+            <Animated.View
+              style={[
+                styles.progressBar,
+                {
+                  width: progressWidth,
+                },
+              ]}
+            />
+          </View>
+
+          <Text style={styles.loadingText}>Carregando registros de soltura...</Text>
+
+          <View style={styles.loadingItemsContainer}>
+            <View style={[styles.loadingItem, { animationDelay: "0s" }]}>
+              <Text style={styles.loadingItemIcon}>🚚</Text>
+              <Text style={styles.loadingItemText}>Veículos</Text>
+            </View>
+            <View style={[styles.loadingItem, { animationDelay: "0.2s" }]}>
+              <Text style={styles.loadingItemIcon}>📅</Text>
+              <Text style={styles.loadingItemText}>Datas</Text>
+            </View>
+            <View style={[styles.loadingItem, { animationDelay: "0.4s" }]}>
+              <Text style={styles.loadingItemIcon}>👥</Text>
+              <Text style={styles.loadingItemText}>Equipes</Text>
+            </View>
+            <View style={[styles.loadingItem, { animationDelay: "0.6s" }]}>
+              <Text style={styles.loadingItemIcon}>📍</Text>
+              <Text style={styles.loadingItemText}>Setores</Text>
+            </View>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -1347,6 +1510,7 @@ const Formulario = ({ navigation }) => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSolturaInfo, setShowSolturaInfo] = useState(false)
+  const [showHistoryLoading, setShowHistoryLoading] = useState(false)
   const [formData, setFormData] = useState({})
   const formScaleAnim = useRef(new Animated.Value(0.95)).current
   const formOpacityAnim = useRef(new Animated.Value(0)).current
@@ -1526,15 +1690,23 @@ const Formulario = ({ navigation }) => {
   }
 
   const navigateToHistorico = () => {
-    navigation?.navigate("FormularioHistorico")
+    setShowHistoryLoading(true)
+
+    // Simular carregamento e navegação
+    setTimeout(() => {
+      setShowHistoryLoading(false)
+      navigation?.navigate("FormularioHistorico")
+    }, 2500)
   }
 
   // Renderizar tela de carregamento
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8BC34A" />
-        <Text style={styles.loadingText}>Carregando dados...</Text>
+      <SafeAreaView style={styles.loadingScreenContainer}>
+        <View style={styles.loadingScreenContent}>
+          <ActivityIndicator size="large" color="#8BC34A" />
+          <Text style={styles.loadingScreenText}>Carregando dados...</Text>
+        </View>
       </SafeAreaView>
     )
   }
@@ -1788,7 +1960,7 @@ const Formulario = ({ navigation }) => {
             bounces={false}
           >
             <View style={styles.header}>
-              <Text style={[styles.headerTitle, { fontSize: normalize(28) }]}>Soltura de Frotas</Text>
+              <Text style={[styles.headerTitle, { fontSize: normalize(25) }]}>Soltura de Frota</Text>
               <View style={styles.headerUnderline} />
             </View>
 
@@ -1851,6 +2023,9 @@ const Formulario = ({ navigation }) => {
 
         {/* Componente para exibir as informações de soltura */}
         <SolturaInfoModal visible={showSolturaInfo} onClose={() => setShowSolturaInfo(false)} formData={formData} />
+
+        {/* Tela de carregamento do histórico */}
+        <HistoryLoadingScreen visible={showHistoryLoading} onClose={() => setShowHistoryLoading(false)} />
       </SafeAreaView>
     </ActiveAutocompleteProvider>
   )
@@ -1957,7 +2132,6 @@ const styles = StyleSheet.create({
   animatedInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
     borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
@@ -2020,7 +2194,6 @@ const styles = StyleSheet.create({
   dateTimeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
     borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
@@ -2045,7 +2218,6 @@ const styles = StyleSheet.create({
   coletorInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
     borderRadius: 15,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
@@ -2060,9 +2232,39 @@ const styles = StyleSheet.create({
     boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.25)",
     elevation: 4,
   },
-  addButtonText: {
-    color: "white",
-    fontWeight: "bold",
+  // New styles for plus icon
+  plusIcon: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  plusHorizontal: {
+    width: 14,
+    height: 2,
+    backgroundColor: "white",
+    position: "absolute",
+  },
+  plusVertical: {
+    width: 2,
+    height: 14,
+    backgroundColor: "white",
+    position: "absolute",
+  },
+  // New styles for minus icon
+  minusIcon: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  minusHorizontal: {
+    width: 12,
+    height: 2,
+    backgroundColor: "white",
+    position: "absolute",
   },
   coletoresList: {
     marginTop: 15,
@@ -2154,6 +2356,9 @@ const styles = StyleSheet.create({
   ripple: {
     position: "absolute",
     backgroundColor: "rgba(255, 255, 255, 0.3)",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   successOverlay: {
     flex: 1,
@@ -2283,17 +2488,21 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  // Estilos para telas de carregamento e erro
-  loadingContainer: {
+  // Improved loading screen container
+  loadingScreenContainer: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  loadingScreenContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "white",
   },
-  loadingText: {
+  loadingScreenText: {
     marginTop: 15,
     fontSize: 16,
     color: "#666",
+    textAlign: "center",
   },
   errorContainer: {
     flex: 1,
@@ -2324,6 +2533,110 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  // Estilos para a tela de carregamento do histórico
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingContainer: {
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 20,
+    width: "85%",
+    maxWidth: 400,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#8BC34A",
+    marginBottom: 5,
+    textAlign: "center",
+  },
+  loadingTitleUnderline: {
+    height: 2,
+    width: 50,
+    backgroundColor: "#8BC34A",
+    borderRadius: 1,
+    marginBottom: 20,
+  },
+  spinnerContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  spinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderTopColor: "#8BC34A",
+    borderRightColor: "#AED581",
+    borderBottomColor: "#DCEDC8",
+    borderLeftColor: "#689F38",
+  },
+  spinnerInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "white",
+  },
+  loadingIcon: {
+    position: "absolute",
+    fontSize: 30,
+  },
+  progressBarContainer: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 4,
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#8BC34A",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  loadingItemsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  loadingItem: {
+    width: "48%",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  loadingItemIcon: {
+    fontSize: 24,
+    marginBottom: 5,
+  },
+  loadingItemText: {
+    fontSize: 14,
+    color: "#8BC34A",
+    fontWeight: "500",
   },
 })
 
