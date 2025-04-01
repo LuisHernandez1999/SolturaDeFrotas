@@ -387,27 +387,28 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
     left: 15,
     top: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [inputHeight / 2 - 10, -10],
+      outputRange: [inputHeight / 2 - 10, -8],
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, 12], // Reduced placeholder text size
+      outputRange: [14, 12],
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#999", "#8BC34A"],
+      outputRange: ["#999", "#4CAF50"],
     }),
-    backgroundColor: isFocused ? "white" : "transparent",
+    backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
       inputRange: [0, 1],
       outputRange: [0, 4],
     }),
     zIndex: 1,
+    fontWeight: "500",
   }
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
+    outputRange: ["#ddd", "#4CAF50"], // Changed to a more elegant green
   })
 
   const dropdownMaxHeight = dropdownAnim.interpolate({
@@ -643,27 +644,28 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
     left: 15,
     top: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [inputHeight / 2 - 10, -10],
+      outputRange: [inputHeight / 2 - 10, -8],
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, 12], // Reduced placeholder text size
+      outputRange: [14, 12],
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#999", "#8BC34A"],
+      outputRange: ["#999", "#4CAF50"],
     }),
-    backgroundColor: isFocused ? "white" : "transparent",
+    backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
       inputRange: [0, 1],
       outputRange: [0, 4],
     }),
     zIndex: 1,
+    fontWeight: "500",
   }
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
+    outputRange: ["#ddd", "#4CAF50"], // Changed to a more elegant green
   })
 
   const dropdownMaxHeight = dropdownAnim.interpolate({
@@ -853,15 +855,15 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
     left: 15,
     top: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [inputHeight / 2 - 10, -10],
+      outputRange: [inputHeight / 2 - 10, -8],
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, 12], // Reduced placeholder text size
+      outputRange: [14, 12],
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#999", "#8BC34A"],
+      outputRange: ["#999", "#4CAF50"],
     }),
     backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
@@ -869,11 +871,12 @@ const CelularInput = ({ value, onChangeText, label, error }) => {
       outputRange: [0, 4],
     }),
     zIndex: 1,
+    fontWeight: "500",
   }
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
+    outputRange: ["#ddd", "#4CAF50"], // Changed to a more elegant green
   })
 
   return (
@@ -990,15 +993,15 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
     left: 15,
     top: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [inputHeight / 2 - 10, -10],
+      outputRange: [inputHeight / 2 - 10, -8],
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, 12], // Reduced placeholder text size
+      outputRange: [14, 12],
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#999", "#8BC34A"],
+      outputRange: ["#999", "#4CAF50"],
     }),
     backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
@@ -1006,11 +1009,12 @@ const DateTimeSelector = ({ date, setDate, label, error }) => {
       outputRange: [0, 4],
     }),
     zIndex: 1,
+    fontWeight: "500",
   }
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
+    outputRange: ["#ddd", "#4CAF50"], // Changed to a more elegant green
   })
 
   return (
@@ -1114,15 +1118,15 @@ const TimeSelector = ({ time, setTime, label, error }) => {
     left: 15,
     top: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [inputHeight / 2 - 10, -10],
+      outputRange: [inputHeight / 2 - 10, -8],
     }),
     fontSize: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, 12], // Reduced placeholder text size
+      outputRange: [14, 12],
     }),
     color: labelPosition.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#999", "#8BC34A"],
+      outputRange: ["#999", "#4CAF50"],
     }),
     backgroundColor: "white",
     paddingHorizontal: labelPosition.interpolate({
@@ -1130,11 +1134,12 @@ const TimeSelector = ({ time, setTime, label, error }) => {
       outputRange: [0, 4],
     }),
     zIndex: 1,
+    fontWeight: "500",
   }
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#666", "#8BC34A"], // Reduced black intensity to #666
+    outputRange: ["#ddd", "#4CAF50"], // Changed to a more elegant green
   })
 
   return (
@@ -1291,6 +1296,16 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
             </View>
 
             <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Turno:</Text>
+              <Text style={styles.solturaValue}>{formData.turno || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Tipo de Frota:</Text>
+              <Text style={styles.solturaValue}>{formData.tipoFrota || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
               <Text style={styles.solturaLabel}>Frequência:</Text>
               <Text style={styles.solturaValue}>{formData.frequencia || "N/A"}</Text>
             </View>
@@ -1311,7 +1326,7 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
           <Pressable
             style={styles.solturaCloseButton}
             onPress={handleClose}
-            android_ripple={{ color: "rgba(139, 195, 74, 0.2)", borderless: false }}
+            android_ripple={{ color: "rgba(76, 175, 80, 0.2)", borderless: false }}
           >
             <Text style={styles.solturaCloseButtonText}>OK</Text>
           </Pressable>
@@ -1531,6 +1546,12 @@ const Formulario = ({ navigation }) => {
   const deviceType = getDeviceType()
   const isTablet = deviceType === "tablet"
 
+  const [turno, setTurno] = useState("")
+  const [tipo_coleta, setTipoColeta] = useState("") // Changed from tipoFrota to tipo_coleta
+
+  const [turnosData] = useState(["Diurno", "Vespertino", "Noturno"])
+  const [tiposFrotaData] = useState(["Seletiva", "Coleta", "Cata Treco", "Varrição"])
+
   // Carregar dados da API usando as URLs específicas
   useEffect(() => {
     const fetchData = async () => {
@@ -1616,6 +1637,9 @@ const Formulario = ({ navigation }) => {
     if (!horaEntregaChave) newErrors.horaEntregaChave = "Hora de entrega da chave é obrigatória"
     if (!horaSaidaFrota) newErrors.horaSaidaFrota = "Hora de saída da frota é obrigatória"
 
+    if (!turno) newErrors.turno = "Turno é obrigatório"
+    if (!tipo_coleta) newErrors.tipo_coleta = "Tipo de Frota é obrigatório"
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -1632,6 +1656,9 @@ const Formulario = ({ navigation }) => {
     setHoraEntregaChave(null)
     setHoraSaidaFrota(null)
     setErrors({})
+
+    setTurno("")
+    setTipoColeta("") // Changed from setTipoFrota to setTipoColeta
   }
 
   const handleSubmit = async () => {
@@ -1651,7 +1678,11 @@ const Formulario = ({ navigation }) => {
           celular: celular,
           lider: lider,
           hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
-          hora_entrega_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
+          hora_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
+          turno: turno,
+          tipo_coleta: tipo_coleta, // Changed from tipoFrota to tipo_coleta
+          nome_lider: lider, // Usando o campo lider como nome_lider
+          telefone_lider: celular, // Usando o campo celular como telefone_lider
         }
 
         // Enviar para a API
@@ -1670,6 +1701,8 @@ const Formulario = ({ navigation }) => {
           lider,
           horaEntregaChave,
           horaSaidaFrota,
+          turno,
+          tipoFrota: tipo_coleta, // Display the tipo_coleta value as tipoFrota in the modal
           ...response, // Adicionar dados da resposta da API
         })
 
@@ -1704,7 +1737,7 @@ const Formulario = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.loadingScreenContainer}>
         <View style={styles.loadingScreenContent}>
-          <ActivityIndicator size="large" color="#8BC34A" />
+          <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingScreenText}>Carregando dados...</Text>
         </View>
       </SafeAreaView>
@@ -1763,6 +1796,18 @@ const Formulario = ({ navigation }) => {
             />
 
             <Autocomplete
+              data={turnosData}
+              value={turno}
+              onChangeText={setTurno}
+              onSelect={setTurno}
+              placeholder="Selecione o turno"
+              label="Turno"
+              error={errors.turno}
+              zIndex={5}
+              id="turno"
+            />
+
+            <Autocomplete
               data={frequenciasData}
               value={frequencia}
               onChangeText={setFrequencia}
@@ -1793,6 +1838,18 @@ const Formulario = ({ navigation }) => {
               setTime={setHoraSaidaFrota}
               label="Hora de Saída da Frota"
               error={errors.horaSaidaFrota}
+            />
+
+            <Autocomplete
+              data={tiposFrotaData}
+              value={tipo_coleta}
+              onChangeText={setTipoColeta}
+              onSelect={setTipoColeta}
+              placeholder="Selecione o tipo de frota"
+              label="Tipo de Frota"
+              error={errors.tipo_coleta}
+              zIndex={4}
+              id="tipoFrota"
             />
 
             <ColetoresSelector
@@ -1864,6 +1921,30 @@ const Formulario = ({ navigation }) => {
         />
 
         <Autocomplete
+          data={turnosData}
+          value={turno}
+          onChangeText={setTurno}
+          onSelect={setTurno}
+          placeholder="Selecione o turno"
+          label="Turno"
+          error={errors.turno}
+          zIndex={6}
+          id="turno"
+        />
+
+        <Autocomplete
+          data={tiposFrotaData}
+          value={tipo_coleta}
+          onChangeText={setTipoColeta}
+          onSelect={setTipoColeta}
+          placeholder="Selecione o tipo de frota"
+          label="Tipo de Frota"
+          error={errors.tipo_coleta}
+          zIndex={5}
+          id="tipoFrota"
+        />
+
+        <Autocomplete
           data={frequenciasData}
           value={frequencia}
           onChangeText={setFrequencia}
@@ -1871,7 +1952,7 @@ const Formulario = ({ navigation }) => {
           placeholder="Selecione a frequência"
           label="Frequência"
           error={errors.frequencia}
-          zIndex={6}
+          zIndex={7}
           id="frequencia"
         />
 
@@ -1883,7 +1964,7 @@ const Formulario = ({ navigation }) => {
           placeholder="Selecione o setor"
           label="Setor"
           error={errors.setor}
-          zIndex={5}
+          zIndex={4}
           id="setor"
         />
 
@@ -1960,7 +2041,7 @@ const Formulario = ({ navigation }) => {
             bounces={false}
           >
             <View style={styles.header}>
-              <Text style={[styles.headerTitle, { fontSize: normalize(25) }]}>Soltura de Frota</Text>
+              <Text style={styles.headerTitle}>Soltura de Frota</Text>
               <View style={styles.headerUnderline} />
             </View>
 
@@ -2058,34 +2139,37 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 15,
-    paddingBottom: 30, // Added padding at the bottom to avoid flickering
+    paddingBottom: 30,
     alignItems: "center",
+    paddingTop: 20, // Added padding at the top to move form down
   },
   header: {
     width: "100%",
     alignItems: "center",
-    marginTop: 20, // Added to compensate for header removal
-    marginBottom: 25,
+    marginTop: 60,
+    marginBottom: 35,
   },
   headerTitle: {
     fontWeight: "bold",
-    color: "#8BC34A",
-    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)",
+    color: "#4CAF50",
+    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.05)",
+    fontSize: 28,
   },
   headerUnderline: {
     height: 3,
     width: 60,
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     marginTop: 8,
     borderRadius: 1.5,
   },
   formContainer: {
     backgroundColor: "white",
-    boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)",
+    boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.1)",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    elevation: 5,
+    borderColor: "rgba(0,0,0,0.03)",
+    elevation: 4,
+    borderRadius: 16,
   },
   twoColumnLayout: {
     flexDirection: "row",
@@ -2132,14 +2216,14 @@ const styles = StyleSheet.create({
   animatedInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    elevation: 4,
+    elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   input: {
     flex: 1,
@@ -2169,22 +2253,26 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 1000,
     marginTop: 5,
-    borderRadius: 15,
+    borderRadius: 12,
     overflow: "hidden",
-    boxShadow: "0px 6px 12px rgba(0, 0, 0, 0.3)",
+    boxShadow: "0px 6px 12px rgba(0, 0, 0, 0.15)",
   },
   dropdown: {
     backgroundColor: "white",
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 15,
+    borderColor: "#eee",
+    borderRadius: 12,
     maxHeight: 200,
-    elevation: 5,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   dropdownItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: "#f5f5f5",
   },
   dropdownItemText: {
     color: "#333",
@@ -2194,12 +2282,12 @@ const styles = StyleSheet.create({
   dateTimeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
     justifyContent: "space-between",
-    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
-    elevation: 4,
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+    elevation: 2,
   },
   dateTimeText: {
     flex: 1,
@@ -2218,19 +2306,19 @@ const styles = StyleSheet.create({
   coletorInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
-    elevation: 4,
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+    elevation: 2,
   },
   addButton: {
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-    boxShadow: "0px 3px 5px rgba(0, 0, 0, 0.25)",
-    elevation: 4,
+    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.15)",
+    elevation: 2,
   },
   // New styles for plus icon
   plusIcon: {
@@ -2277,9 +2365,9 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#ddd",
-    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.15)",
-    elevation: 2,
+    borderColor: "#eee",
+    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
+    elevation: 1,
   },
   coletorName: {
     flex: 1,
@@ -2288,11 +2376,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   removeButton: {
-    backgroundColor: "#e53935",
+    backgroundColor: "#F44336",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.25)",
-    elevation: 3,
+    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.15)",
+    elevation: 2,
   },
   removeButtonText: {
     color: "white",
@@ -2308,15 +2396,15 @@ const styles = StyleSheet.create({
   submitButton: {
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 30,
     overflow: "hidden",
-    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
-    elevation: 5,
+    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.1)",
+    elevation: 3,
   },
   submitButtonBackground: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -2324,30 +2412,32 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     letterSpacing: 1,
+    fontSize: 16,
   },
   // Estilos para o botão de histórico - ATUALIZADO
   historicoButton: {
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 25, // Bordas mais arredondadas
+    borderRadius: 30,
     width: "100%",
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "#8BC34A",
-    boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.15)",
-    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: "#4CAF50",
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.08)",
+    elevation: 2,
   },
   historicoButtonContent: {
     width: "100%",
     height: "100%",
-    backgroundColor: "white", // Fundo branco
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },
   historicoButtonText: {
-    color: "#8BC34A", // Texto verde
+    color: "#4CAF50",
     fontWeight: "bold",
     letterSpacing: 0.5,
+    fontSize: 16,
   },
   rippleContainer: {
     overflow: "hidden",
@@ -2383,7 +2473,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
@@ -2406,7 +2496,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   successCloseButton: {
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 8,
@@ -2419,15 +2509,15 @@ const styles = StyleSheet.create({
   // Estilos para o modal de informações de soltura
   solturaInfoContainer: {
     backgroundColor: "white",
-    borderRadius: 15,
+    borderRadius: 16,
     padding: 20,
     width: "85%",
     maxWidth: 400,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   solturaHeader: {
     alignItems: "center",
@@ -2436,13 +2526,13 @@ const styles = StyleSheet.create({
   solturaTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#8BC34A",
+    color: "#4CAF50",
     marginBottom: 5,
   },
   solturaHeaderUnderline: {
     height: 2,
     width: 50,
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     borderRadius: 1,
   },
   solturaContent: {
@@ -2470,13 +2560,13 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     paddingVertical: 10,
     paddingHorizontal: 30,
-    borderRadius: 25,
+    borderRadius: 30,
     alignSelf: "center",
     borderWidth: 1,
-    borderColor: "#8BC34A",
+    borderColor: "#4CAF50",
   },
   solturaCloseButtonText: {
-    color: "#8BC34A",
+    color: "#4CAF50",
     fontWeight: "bold",
     fontSize: 16,
   },
@@ -2514,7 +2604,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#e53935",
+    color: "#F44336",
     marginBottom: 10,
   },
   errorMessage: {
@@ -2524,10 +2614,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     paddingVertical: 12,
     paddingHorizontal: 30,
-    borderRadius: 8,
+    borderRadius: 30,
   },
   retryButtonText: {
     color: "white",
@@ -2543,28 +2633,28 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     backgroundColor: "white",
-    borderRadius: 15,
+    borderRadius: 16,
     padding: 20,
     width: "85%",
     maxWidth: 400,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   loadingTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#8BC34A",
+    color: "#4CAF50",
     marginBottom: 5,
     textAlign: "center",
   },
   loadingTitleUnderline: {
     height: 2,
     width: 50,
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
     borderRadius: 1,
     marginBottom: 20,
   },
@@ -2580,10 +2670,10 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 4,
-    borderTopColor: "#8BC34A",
-    borderRightColor: "#AED581",
-    borderBottomColor: "#DCEDC8",
-    borderLeftColor: "#689F38",
+    borderTopColor: "#4CAF50",
+    borderRightColor: "#81C784",
+    borderBottomColor: "#C8E6C9",
+    borderLeftColor: "#388E3C",
   },
   spinnerInner: {
     width: 60,
@@ -2605,7 +2695,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: "100%",
-    backgroundColor: "#8BC34A",
+    backgroundColor: "#4CAF50",
   },
   loadingText: {
     fontSize: 16,
@@ -2622,7 +2712,7 @@ const styles = StyleSheet.create({
   loadingItem: {
     width: "48%",
     backgroundColor: "#f8f9fa",
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 15,
     alignItems: "center",
     marginBottom: 10,
@@ -2635,7 +2725,7 @@ const styles = StyleSheet.create({
   },
   loadingItemText: {
     fontSize: 14,
-    color: "#8BC34A",
+    color: "#4CAF50",
     fontWeight: "500",
   },
 })

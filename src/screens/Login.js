@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useRef } from "react"
 import {
   View,
@@ -60,33 +58,64 @@ const unformatPhoneNumber = (value) => {
   return value.replace(/\D/g, "")
 }
 
-// Componente de tela de carregamento aprimorado
+// Componente de tela de carregamento reformulado e aprimorado
 const LoadingScreen = ({ visible }) => {
-  const [rotation] = useState(new Animated.Value(0))
-  const [scale] = useState(new Animated.Value(0.8))
-  const [opacity] = useState(new Animated.Value(0))
-  const [dotOpacity1] = useState(new Animated.Value(0.3))
-  const [dotOpacity2] = useState(new Animated.Value(0.3))
-  const [dotOpacity3] = useState(new Animated.Value(0.3))
+  // Valores de animação
+  const rotation = useRef(new Animated.Value(0)).current
+  const scale = useRef(new Animated.Value(0.8)).current
+  const opacity = useRef(new Animated.Value(0)).current
+  const dotOpacity1 = useRef(new Animated.Value(0.3)).current
+  const dotOpacity2 = useRef(new Animated.Value(0.3)).current
+  const dotOpacity3 = useRef(new Animated.Value(0.3)).current
+  const containerScale = useRef(new Animated.Value(0.9)).current
+  const containerRotate = useRef(new Animated.Value(0)).current
+  const backgroundOpacity = useRef(new Animated.Value(0)).current
+  const headerGlow = useRef(new Animated.Value(0)).current
+  const progressWidth = useRef(new Animated.Value(0)).current
+  const contentTranslateY = useRef(new Animated.Value(20)).current
+  const leafRotation = useRef(new Animated.Value(0)).current
+  const pulseAnimation = useRef(new Animated.Value(1)).current
+  const shimmerValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (visible) {
       // Animação de entrada
       Animated.parallel([
-        Animated.timing(opacity, {
+        Animated.timing(backgroundOpacity, {
           toValue: 1,
           duration: 400,
           useNativeDriver: true,
         }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
         Animated.spring(scale, {
           toValue: 1,
-          friction: 8,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.spring(containerScale, {
+          toValue: 1,
+          friction: 5,
           tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(containerRotate, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: 0,
+          duration: 700,
           useNativeDriver: true,
         }),
       ]).start()
 
-      // Animação de rotação contínua
+      // Animação de rotação contínua - corrigindo o erro de easing
       Animated.loop(
         Animated.timing(rotation, {
           toValue: 1,
@@ -96,6 +125,78 @@ const LoadingScreen = ({ visible }) => {
         })
       ).start()
 
+      // Animação de rotação da folha
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(leafRotation, {
+            toValue: 1,
+            duration: 2000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(leafRotation, {
+            toValue: 0,
+            duration: 2000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+
+      // Animação de pulsação
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnimation, {
+            toValue: 1.1,
+            duration: 1000,
+            easing: Easing.bezier(0.4, 0, 0.2, 1),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnimation, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.bezier(0.4, 0, 0.2, 1),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+
+      // Animação de shimmer
+      Animated.loop(
+        Animated.timing(shimmerValue, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start()
+
+      // Animação de brilho do cabeçalho
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(headerGlow, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.linear,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerGlow, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.linear,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start()
+
+      // Animação da barra de progresso
+      Animated.timing(progressWidth, {
+        toValue: 1,
+        duration: 3000,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: false,
+      }).start()
+
       // Animação dos pontos pulsantes
       Animated.loop(
         Animated.sequence([
@@ -103,38 +204,66 @@ const LoadingScreen = ({ visible }) => {
           Animated.timing(dotOpacity1, {
             toValue: 1,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
           // Segundo ponto
           Animated.timing(dotOpacity2, {
             toValue: 1,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
           // Terceiro ponto
           Animated.timing(dotOpacity3, {
             toValue: 1,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
           // Pausa
           Animated.timing(dotOpacity1, {
             toValue: 0.3,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
           Animated.timing(dotOpacity2, {
             toValue: 0.3,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
           Animated.timing(dotOpacity3, {
             toValue: 0.3,
             duration: 400,
+            easing: Easing.linear,
             useNativeDriver: true,
           }),
         ])
       ).start()
+    } else {
+      // Animação de saída
+      Animated.parallel([
+        Animated.timing(backgroundOpacity, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(containerScale, {
+          toValue: 1.1,
+          duration: 300,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ]).start()
     }
   }, [visible])
 
@@ -142,53 +271,148 @@ const LoadingScreen = ({ visible }) => {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   })
+  
+  const containerRotation = containerRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-5deg', '0deg'],
+  })
+
+  const headerGlowColor = headerGlow.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(139, 195, 74, 1)', 'rgba(156, 204, 101, 1)'],
+  })
+
+  const progressBarWidth = progressWidth.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  })
+
+  const leafSpin = leafRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '15deg'],
+  })
+
+  const shimmerTranslate = shimmerValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-100, 100],
+  })
 
   if (!visible) return null
 
   return (
-    <View style={styles.loadingOverlay}>
+    <Animated.View style={[
+      styles.loadingOverlay,
+      { opacity: backgroundOpacity }
+    ]}>
       <Animated.View 
         style={[
           styles.loadingContainer, 
           { 
             opacity, 
-            transform: [{ scale }] 
+            transform: [
+              { scale: containerScale },
+              { rotate: containerRotation },
+              { perspective: 1000 }
+            ] 
           }
         ]}
       >
-        <View style={styles.loadingHeader}>
-          <Text style={styles.loadingHeaderText}>Limpa Gyn</Text>
-        </View>
+        <Animated.View style={[
+          styles.loadingHeader,
+          { backgroundColor: headerGlowColor }
+        ]}>
+          <Animated.View style={{ transform: [{ scale: pulseAnimation }] }}>
+            <Text style={styles.loadingHeaderText}>Limpa Gyn</Text>
+          </Animated.View>
+          <View style={styles.headerDecoration}>
+            <Animated.View 
+              style={[
+                styles.headerDecorationLine,
+                { transform: [{ scaleX: pulseAnimation }] }
+              ]} 
+            />
+          </View>
+        </Animated.View>
         
         <View style={styles.loadingContent}>
           <Animated.View 
             style={[
               styles.logoCircle, 
-              { transform: [{ rotate: spin }] }
+              { 
+                transform: [
+                  { rotate: spin },
+                  { scale }
+                ] 
+              }
             ]}
           >
             <View style={styles.logoInnerCircle}>
+              <Animated.View
+                style={[
+                  styles.shimmerEffect,
+                  {
+                    transform: [{ translateX: shimmerTranslate }]
+                  }
+                ]}
+              />
               <Text style={styles.logoText}>LG</Text>
-              <View style={styles.leafContainer}>
+              <Animated.View 
+                style={[
+                  styles.leafContainer,
+                  { transform: [{ rotate: leafSpin }] }
+                ]}
+              >
                 <View style={styles.leaf} />
-              </View>
+              </Animated.View>
             </View>
           </Animated.View>
           
-          <Text style={styles.loadingTitle}>Preparando tudo para você</Text>
-          
-          <View style={styles.dotsContainer}>
-            <Animated.View style={[styles.dot, { opacity: dotOpacity1 }]} />
-            <Animated.View style={[styles.dot, { opacity: dotOpacity2 }]} />
-            <Animated.View style={[styles.dot, { opacity: dotOpacity3 }]} />
-          </View>
-          
-          <Text style={styles.loadingMessage}>
-            Estamos carregando suas informações
-          </Text>
+          <Animated.View style={{ transform: [{ translateY: contentTranslateY }], opacity }}>
+            <Text style={styles.loadingTitle}>Preparando tudo para você</Text>
+            
+            <View style={styles.progressBarContainer}>
+              <Animated.View style={[styles.progressBar, { width: progressBarWidth }]} />
+              <Animated.View 
+                style={[
+                  styles.progressBarHighlight,
+                  { transform: [{ translateX: shimmerTranslate }] }
+                ]} 
+              />
+            </View>
+            
+            <View style={styles.dotsContainer}>
+              <Animated.View 
+                style={[
+                  styles.dot, 
+                  { opacity: dotOpacity1, transform: [{ scale: pulseAnimation }] }
+                ]} 
+              />
+              <Animated.View 
+                style={[
+                  styles.dot, 
+                  { opacity: dotOpacity2, transform: [{ scale: pulseAnimation }] }
+                ]} 
+              />
+              <Animated.View 
+                style={[
+                  styles.dot, 
+                  { opacity: dotOpacity3, transform: [{ scale: pulseAnimation }] }
+                ]} 
+              />
+            </View>
+            
+            <Animated.Text 
+              style={[
+                styles.loadingMessage,
+                { transform: [{ scale: pulseAnimation }] }
+              ]}
+            >
+              Estamos carregando suas informações
+            </Animated.Text>
+          </Animated.View>
         </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -204,7 +428,6 @@ const SuccessMessage = ({ visible, message, onHide }) => {
         Animated.timing(translateY, {
           toValue: 0,
           duration: 500,
-          easing: Easing.out(Easing.back(1.5)),
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
@@ -268,7 +491,6 @@ const ErrorToast = ({ visible, message, onHide }) => {
         Animated.timing(translateY, {
           toValue: 0,
           duration: 500,
-          easing: Easing.out(Easing.back(1.5)),
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
@@ -1061,6 +1283,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    position: "relative",
+  },
+  headerDecoration: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  headerDecorationLine: {
+    width: "40%",
+    height: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 2,
+    marginBottom: -1,
   },
   loadingHeaderText: {
     color: "white",
@@ -1097,6 +1334,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.5)",
+    overflow: "hidden",
+  },
+  shimmerEffect: {
+    position: "absolute",
+    width: 60,
+    height: 100,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    transform: [{ rotate: "45deg" }],
   },
   logoText: {
     color: "white",
@@ -1126,6 +1371,28 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
+  progressBarContainer: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    marginBottom: 15,
+    overflow: "hidden",
+    position: "relative",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#8BC34A",
+    borderRadius: 3,
+  },
+  progressBarHighlight: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 30,
+    height: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
   dotsContainer: {
     flexDirection: "row",
     marginBottom: 15,
@@ -1142,5 +1409,6 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginTop: 5,
+    fontWeight: "500",
   },
 })
