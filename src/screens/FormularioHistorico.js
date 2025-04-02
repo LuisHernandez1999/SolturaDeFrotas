@@ -179,30 +179,53 @@ const RippleButton = ({ onPress, style, textStyle, children, icon }) => {
   )
 }
 
-// Componente de pesquisa
-const SearchInput = ({ value, onChangeText, placeholder, style }) => {
+// Componente de pesquisa modificado para filtrar apenas ao clicar no ícone
+const SearchInput = ({ value, onChangeText, onSearch, placeholder, style }) => {
   const [isFocused, setIsFocused] = useState(false)
+  const [inputValue, setInputValue] = useState(value)
   const inputRef = useRef(null)
+
+  // Atualizar o valor interno quando o valor externo muda
+  useEffect(() => {
+    setInputValue(value)
+  }, [value])
+
+  // Função para lidar com a mudança de texto sem filtrar imediatamente
+  const handleTextChange = (text) => {
+    setInputValue(text)
+  }
+
+  // Função para executar a pesquisa quando o ícone é clicado
+  const handleSearch = () => {
+    onSearch(inputValue)
+  }
 
   return (
     <View style={[styles.searchContainer, style]}>
       <View style={[styles.searchInputContainer, isFocused && styles.searchInputContainerFocused]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <TouchableOpacity onPress={handleSearch} style={styles.searchIconButton}>
+          <Text style={styles.searchIcon}>🔍</Text>
+        </TouchableOpacity>
         <TextInput
           ref={inputRef}
           style={styles.searchInput}
-          value={value}
-          onChangeText={onChangeText}
+          value={inputValue}
+          onChangeText={handleTextChange}
           placeholder={placeholder}
           placeholderTextColor="#999"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           clearButtonMode="while-editing"
+          onSubmitEditing={handleSearch}
+          returnKeyType="search"
         />
-        {value ? (
+        {inputValue ? (
           <TouchableOpacity
             style={styles.clearSearchButton}
-            onPress={() => onChangeText("")}
+            onPress={() => {
+              setInputValue("")
+              onSearch("")
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.clearSearchButtonText}>✕</Text>
@@ -552,6 +575,7 @@ export default function HistoricoSoltura() {
 
   // Estados para pesquisa e paginação
   const [searchQuery, setSearchQuery] = useState("")
+  const [tempSearchQuery, setTempSearchQuery] = useState("") // Para armazenar o valor temporário da pesquisa
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPageOptions = [5, 10, 15, 20]
@@ -760,13 +784,14 @@ export default function HistoricoSoltura() {
     }, 1500)
   }, [])
 
-  // Filtrar dados com base na pesquisa
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
+  // Função para executar a pesquisa quando o usuário clicar no ícone de pesquisa
+  const handleSearch = (query) => {
+    setSearchQuery(query)
+    if (query.trim() === "") {
       setFilteredRotas(rotasData)
       setCurrentPage(1)
     } else {
-      const lowercaseQuery = searchQuery.toLowerCase()
+      const lowercaseQuery = query.toLowerCase()
       const filtered = rotasData.filter(
         (rota) =>
           rota.motorista.toLowerCase().includes(lowercaseQuery) ||
@@ -780,7 +805,7 @@ export default function HistoricoSoltura() {
       setFilteredRotas(filtered)
       setCurrentPage(1)
     }
-  }, [searchQuery, rotasData])
+  }
 
   // Calcular dados paginados
   const getPaginatedData = () => {
@@ -926,18 +951,10 @@ export default function HistoricoSoltura() {
       <View style={styles.paginationContainer}>
         <TouchableOpacity
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage(1)}
-          disabled={currentPage === 1}
-        >
-          <Text style={styles.paginationButtonText}>«</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
         >
-          <Text style={styles.paginationButtonText}>‹</Text>
+          <Text style={styles.paginationButtonText}>←</Text>
         </TouchableOpacity>
 
         <View style={styles.paginationInfo}>
@@ -951,15 +968,7 @@ export default function HistoricoSoltura() {
           onPress={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
         >
-          <Text style={styles.paginationButtonText}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage(totalPages)}
-          disabled={currentPage === totalPages}
-        >
-          <Text style={styles.paginationButtonText}>»</Text>
+          <Text style={styles.paginationButtonText}>→</Text>
         </TouchableOpacity>
       </View>
     )
@@ -1030,11 +1039,15 @@ export default function HistoricoSoltura() {
       <View style={[styles.searchSection, { paddingHorizontal: padding }]}>
         <SearchInput
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={setTempSearchQuery}
+          onSearch={handleSearch}
           placeholder="Pesquisar por motorista, prefixo, setor..."
           style={styles.searchInput}
         />
       </View>
+
+      {/* Add a spacer View with significant height */}
+      <View style={{ height: 15 }} />
 
       <View
         style={[
@@ -1149,11 +1162,11 @@ const styles = StyleSheet.create({
   // Estilos para a seção de pesquisa
   searchSection: {
     backgroundColor: "#fff",
-    paddingVertical: 10,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     zIndex: 20,
-    marginBottom: 10,
+    marginBottom: 20, // Reduzido de 30 para 20
   },
   searchContainer: {
     width: "100%",
@@ -1174,22 +1187,33 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  searchIconButton: {
+    padding: 8,
+    marginRight: 5,
+  },
   searchIcon: {
     fontSize: 16,
-    color: "#999",
-    marginRight: 10,
+    color: "#8BC34A",
+    marginRight: 5,
   },
   searchInput: {
     flex: 1,
     fontSize: normalize(14),
     color: "#333",
     height: "100%",
+    paddingVertical: 8,
   },
   clearSearchButton: {
-    padding: 5,
+    padding: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
   },
   clearSearchButtonText: {
-    fontSize: normalize(16),
+    fontSize: normalize(14),
     color: "#999",
     fontWeight: "bold",
   },
@@ -1209,7 +1233,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
-    marginTop: 5,
+    marginTop: 15, // Reduzido de 25 para 15
     zIndex: 1,
   },
   tableHeader: {
@@ -1318,32 +1342,45 @@ const styles = StyleSheet.create({
   paginationContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center", // Center the pagination controls
   },
   paginationButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36, // Slightly reduced from 40
+    height: 36, // Slightly reduced from 40
+    borderRadius: 18, // Half of width/height
     backgroundColor: "#f5f5f5",
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 3,
+    marginHorizontal: 5, // Reduced from 10 to keep arrows within view
     borderWidth: 1,
     borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   paginationButtonDisabled: {
     opacity: 0.5,
   },
   paginationButtonText: {
-    fontSize: normalize(14),
-    color: "#666",
+    fontSize: normalize(18),
+    color: "#8BC34A",
     fontWeight: "bold",
   },
   paginationInfo: {
-    marginHorizontal: 8,
+    marginHorizontal: 10, // Reduced from 15
+    backgroundColor: "#f9f9f9",
+    paddingHorizontal: 12, // Reduced from 15
+    paddingVertical: 6, // Reduced from 8
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   paginationText: {
-    fontSize: normalize(12),
-    color: "#666",
+    fontSize: normalize(14),
+    color: "#555",
+    fontWeight: "500",
   },
   buttonContainer: {
     marginTop: 10,
@@ -1637,32 +1674,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
-  },
-  searchIcon: {
-    fontSize: 16,
-    color: "#8BC34A",
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: normalize(14),
-    color: "#333",
-    height: "100%",
-    paddingVertical: 8,
-  },
-  clearSearchButton: {
-    padding: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  clearSearchButtonText: {
-    fontSize: normalize(14),
-    color: "#999",
-    fontWeight: "bold",
   },
 })
 

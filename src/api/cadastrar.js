@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const API_URL = "http://192.168.0.53:8000//api/cadastro/cadastrar_user/"
+const API_URL = "http://192.168.0.112:8000/api/cadastro/cadastrar_user/"
 
 export const cadastrarUser = async (nome, celular, senha, senhaConfirmar) => {
     try {
