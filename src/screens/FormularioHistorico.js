@@ -179,6 +179,75 @@ const RippleButton = ({ onPress, style, textStyle, children, icon }) => {
   )
 }
 
+// Componente de pesquisa
+const SearchInput = ({ value, onChangeText, placeholder, style }) => {
+  const [isFocused, setIsFocused] = useState(false)
+  const inputRef = useRef(null)
+
+  return (
+    <View style={[styles.searchContainer, style]}>
+      <View style={[styles.searchInputContainer, isFocused && styles.searchInputContainerFocused]}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          ref={inputRef}
+          style={styles.searchInput}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#999"
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          clearButtonMode="while-editing"
+        />
+        {value ? (
+          <TouchableOpacity
+            style={styles.clearSearchButton}
+            onPress={() => onChangeText("")}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.clearSearchButtonText}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+// Componente de seleção de linhas por página
+const RowsPerPageSelector = ({ value, options, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef(null)
+
+  return (
+    <View style={styles.rowsPerPageContainer}>
+      <Text style={styles.rowsPerPageLabel}>Linhas por página:</Text>
+      <TouchableOpacity style={styles.rowsPerPageSelector} onPress={() => setIsOpen(!isOpen)} ref={dropdownRef}>
+        <Text style={styles.rowsPerPageValue}>{value}</Text>
+        <Text style={styles.rowsPerPageArrow}>{isOpen ? "▲" : "▼"}</Text>
+      </TouchableOpacity>
+
+      {isOpen && (
+        <View style={styles.rowsPerPageDropdown}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[styles.rowsPerPageOption, option === value && styles.rowsPerPageOptionSelected]}
+              onPress={() => {
+                onChange(option)
+                setIsOpen(false)
+              }}
+            >
+              <Text style={[styles.rowsPerPageOptionText, option === value && styles.rowsPerPageOptionTextSelected]}>
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  )
+}
+
 // Modify the Autocomplete component to fix the issue with typing and selecting collaborators
 const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, style, id }) => {
   const [showDropdown, setShowDropdown] = useState(false)
@@ -288,87 +357,13 @@ const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, sty
   )
 }
 
-// Modify the RotaDetailModal component to fix the team modal
-const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
+// Modify the RotaDetailModal component to remove edit functionality
+const RotaDetailModal = ({ isVisible, rota, onClose }) => {
   const [fadeAnim] = useState(new Animated.Value(0))
   const [scaleAnim] = useState(new Animated.Value(0.9))
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const isSmallScreen = screenWidth < 360
   const padding = getResponsivePadding()
-
-  // Estados para os campos editáveis
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedRota, setEditedRota] = useState(null)
-  const [originalRota, setOriginalRota] = useState(null)
-  const [autoObservacoes, setAutoObservacoes] = useState("")
-  const [newColetor, setNewColetor] = useState("")
-
-  // Lista de motoristas, veículos e coletores para os autocompletes
-  const motoristas = ["João Silva", "Maria Oliveira", "Pedro Santos", "Ana Costa", "Carlos Ferreira"]
-  const prefixos = ["ABC-1234", "DEF-5678", "GHI-9012", "JKL-3456", "MNO-7890"]
-  const todosColetores = [
-    "Pedro Santos",
-    "Ana Costa",
-    "João Silva",
-    "Maria Oliveira",
-    "Carlos Ferreira",
-    "Roberto Alves",
-    "Fernanda Lima",
-    "Marcelo Souza",
-    "Juliana Pereira",
-  ]
-
-  // Create z-index values for each section to prevent overlap
-  const vehicleInfoZIndex = 50
-  const teamZIndex = 40
-  const contactZIndex = 30
-  const observationsZIndex = 20
-
-  // Inicializar os estados quando o modal é aberto
-  useEffect(() => {
-    if (rota && isVisible) {
-      setEditedRota({ ...rota })
-      setOriginalRota({ ...rota })
-      setAutoObservacoes("")
-      setIsEditing(false)
-      setNewColetor("")
-    }
-  }, [rota, isVisible])
-
-  // Atualizar observações automaticamente quando houver mudanças
-  useEffect(() => {
-    if (editedRota && originalRota) {
-      const newObservacoes = []
-
-      // Verificar mudança de motorista
-      if (editedRota.motorista !== originalRota.motorista) {
-        newObservacoes.push(`Alteração de motorista: ${originalRota.motorista} → ${editedRota.motorista}`)
-      }
-
-      // Verificar mudança de veículo (prefixo)
-      if (editedRota.prefixo !== originalRota.prefixo) {
-        newObservacoes.push(`Alteração de veículo: ${originalRota.prefixo} → ${editedRota.prefixo}`)
-      }
-
-      // Verificar mudanças nos coletores
-      const originalColetoresSet = new Set(originalRota.coletores)
-      const editedColetoresSet = new Set(editedRota.coletores)
-
-      // Coletores removidos
-      const removidos = originalRota.coletores.filter((c) => !editedColetoresSet.has(c))
-      if (removidos.length > 0) {
-        newObservacoes.push(`Coletor(es) removido(s): ${removidos.join(", ")}`)
-      }
-
-      // Coletores adicionados
-      const adicionados = editedRota.coletores.filter((c) => !originalColetoresSet.has(c))
-      if (adicionados.length > 0) {
-        newObservacoes.push(`Coletor(es) adicionado(s): ${adicionados.join(", ")}`)
-      }
-
-      setAutoObservacoes(newObservacoes.join("\n"))
-    }
-  }, [editedRota, originalRota])
 
   useEffect(() => {
     if (isVisible) {
@@ -394,66 +389,10 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
     }
   }, [isVisible])
 
-  if (!editedRota) return null
+  if (!rota) return null
 
   // Calcular altura máxima do modal com base na altura da tela
   const maxModalHeight = screenHeight * 0.8
-
-  // Modify the addColetor function to handle selection better
-  const addColetor = (value) => {
-    if ((value || newColetor) && !editedRota.coletores.includes(value || newColetor)) {
-      setEditedRota({
-        ...editedRota,
-        coletores: [...editedRota.coletores, value || newColetor],
-      })
-      setNewColetor("")
-    }
-  }
-
-  // Função para remover um coletor
-  const removeColetor = (index) => {
-    const newColetores = [...editedRota.coletores]
-    newColetores.splice(index, 1)
-    setEditedRota({
-      ...editedRota,
-      coletores: newColetores,
-    })
-  }
-
-  // Função para salvar as alterações
-  const handleSave = () => {
-    // Validate required fields
-    if (!editedRota.motorista || !editedRota.prefixo) {
-      // Show alert or handle empty fields
-      alert("Os campos Motorista e Prefixo são obrigatórios.")
-      return
-    }
-
-    // Combinar observações existentes com as automáticas
-    let finalObservacoes = editedRota.observacoes || ""
-
-    if (autoObservacoes) {
-      if (finalObservacoes) {
-        finalObservacoes += "\n\n" + autoObservacoes
-      } else {
-        finalObservacoes = autoObservacoes
-      }
-    }
-
-    const updatedRota = {
-      ...editedRota,
-      observacoes: finalObservacoes,
-    }
-
-    onSave(updatedRota)
-    setIsEditing(false)
-  }
-
-  // Função para cancelar a edição
-  const handleCancelEdit = () => {
-    setEditedRota({ ...originalRota })
-    setIsEditing(false)
-  }
 
   // Calculate modal width based on screen size
   const modalWidth = screenWidth > 500 ? 500 : screenWidth * 0.92
@@ -483,7 +422,7 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
             <View style={styles.modalHeaderGradient}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, isSmallScreen && { fontSize: normalize(16) }]}>
-                  {isEditing ? "Editar Rota" : "Detalhes da Rota"}
+                  Detalhes da Soltura
                 </Text>
                 <TouchableOpacity
                   style={styles.closeButton}
@@ -501,186 +440,96 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
               contentContainerStyle={[styles.modalContentContainer, { padding: padding }]}
               keyboardShouldPersistTaps="handled"
             >
-              <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
+              <View style={styles.modalSection}>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Data:</Text>
-                  <Text style={styles.detailValue}>{editedRota.data}</Text>
+                  <Text style={styles.detailValue}>{rota.data}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Hora:</Text>
-                  <Text style={styles.detailValue}>{editedRota.hora}</Text>
+                  <Text style={styles.detailValue}>{rota.hora}</Text>
                 </View>
               </View>
 
-              <View style={[styles.modalSection, { zIndex: vehicleInfoZIndex }]}>
+              <View style={styles.modalSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Informações do Veículo</Text>
-                  {!isEditing && (
-                    <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
-                      <Text style={styles.editButtonText}>Editar</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Motorista:</Text>
-                  {isEditing ? (
-                    <Autocomplete
-                      id="motorista-autocomplete"
-                      options={motoristas}
-                      value={editedRota.motorista}
-                      onChangeText={(text) => setEditedRota({ ...editedRota, motorista: text })}
-                      onSelect={(value) => setEditedRota({ ...editedRota, motorista: value })}
-                      placeholder="Selecione o motorista"
-                      style={styles.editAutocomplete}
-                    />
-                  ) : (
-                    <Text style={styles.detailValue}>{editedRota.motorista}</Text>
-                  )}
+                  <Text style={styles.detailValue}>{rota.motorista}</Text>
                 </View>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Prefixo:</Text>
-                  {isEditing ? (
-                    <Autocomplete
-                      id="prefixo-autocomplete"
-                      options={prefixos}
-                      value={editedRota.prefixo}
-                      onChangeText={(text) => setEditedRota({ ...editedRota, prefixo: text })}
-                      onSelect={(value) => setEditedRota({ ...editedRota, prefixo: value })}
-                      placeholder="Selecione o prefixo"
-                      style={styles.editAutocomplete}
-                    />
-                  ) : (
-                    <Text style={styles.detailValue}>{editedRota.prefixo}</Text>
-                  )}
+                  <Text style={styles.detailValue}>{rota.prefixo}</Text>
                 </View>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Setor:</Text>
-                  <Text style={styles.detailValue}>{editedRota.setor}</Text>
+                  <Text style={styles.detailValue}>{rota.setor}</Text>
                 </View>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Frequência:</Text>
-                  <Text style={styles.detailValue}>{editedRota.frequencia || "Diária"}</Text>
+                  <Text style={styles.detailValue}>{rota.frequencia || "Diária"}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Tipo:</Text>
+                  <Text style={styles.detailValue}>{rota.tipo || "Não informado"}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Turno:</Text>
+                  <Text style={styles.detailValue}>{rota.turno || "Não informado"}</Text>
                 </View>
               </View>
 
-              <View style={[styles.modalSection, { zIndex: teamZIndex }]}>
+              <View style={styles.modalSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Equipe</Text>
                 </View>
 
-                {isEditing && (
-                  <View style={styles.addColetorContainer}>
-                    <Autocomplete
-                      id="coletor-autocomplete"
-                      options={todosColetores.filter((c) => !editedRota.coletores.includes(c))}
-                      value={newColetor}
-                      onChangeText={setNewColetor}
-                      onSelect={(value) => {
-                        addColetor(value)
-                      }}
-                      placeholder="Adicionar coletor"
-                      style={styles.coletorAutocomplete}
-                    />
-                    <TouchableOpacity
-                      style={styles.addColetorButton}
-                      onPress={() => addColetor()}
-                      disabled={!newColetor || editedRota.coletores.includes(newColetor)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <View style={styles.plusIcon}>
-                        <View style={styles.plusHorizontal} />
-                        <View style={styles.plusVertical} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 <View style={styles.coletoresList}>
-                  {editedRota.coletores.map((coletor, index) => (
+                  {rota.coletores.map((coletor, index) => (
                     <View key={index} style={styles.coletorItem}>
                       <Text style={styles.coletorText}>{coletor}</Text>
-                      {isEditing && (
-                        <TouchableOpacity style={styles.removeColetorButton} onPress={() => removeColetor(index)}>
-                          <View style={styles.minusIcon}>
-                            <View style={styles.minusHorizontal} />
-                          </View>
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ))}
                 </View>
               </View>
 
-              <View style={[styles.modalSection, { zIndex: contactZIndex }]}>
+              <View style={styles.modalSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Contato</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Celular:</Text>
-                  <Text style={styles.detailValue}>{editedRota.celular || "(XX) XXXXX-XXXX"}</Text>
+                  <Text style={styles.detailValue}>{rota.celular || "(XX) XXXXX-XXXX"}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Líder:</Text>
-                  <Text style={styles.detailValue}>{editedRota.lider || "Não informado"}</Text>
+                  <Text style={styles.detailValue}>{rota.lider || "Não informado"}</Text>
                 </View>
               </View>
 
-              <View style={[styles.modalSection, { zIndex: observationsZIndex }]}>
+              <View style={styles.modalSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Observações</Text>
                 </View>
 
-                {isEditing ? (
-                  <TextInput
-                    style={styles.observacoesInput}
-                    multiline
-                    value={editedRota.observacoes}
-                    onChangeText={(text) => setEditedRota({ ...editedRota, observacoes: text })}
-                    placeholder="Adicione observações aqui"
-                  />
-                ) : (
-                  <View style={styles.observacoesContainer}>
-                    <Text style={styles.observacoesText}>
-                      {editedRota.observacoes || "Nenhuma observação registrada"}
-                    </Text>
-                  </View>
-                )}
-
-                {isEditing && autoObservacoes && (
-                  <View style={styles.autoObservacoesContainer}>
-                    <Text style={styles.autoObservacoesTitle}>Alterações detectadas:</Text>
-                    <Text style={styles.autoObservacoesText}>{autoObservacoes}</Text>
-                    <Text style={styles.autoObservacoesNote}>
-                      Estas alterações serão adicionadas automaticamente às observações ao salvar.
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.observacoesContainer}>
+                  <Text style={styles.observacoesText}>{rota.observacoes || "Nenhuma observação registrada"}</Text>
+                </View>
               </View>
             </ScrollView>
 
             <View style={[styles.modalFooter, { padding: padding }]}>
-              {isEditing ? (
-                <View style={styles.editButtonsRow}>
-                  <RippleButton
-                    style={styles.cancelButton}
-                    textStyle={styles.cancelButtonText}
-                    onPress={handleCancelEdit}
-                  >
-                    CANCELAR
-                  </RippleButton>
-                  <RippleButton style={styles.saveButton} textStyle={styles.saveButtonText} onPress={handleSave}>
-                    SALVAR
-                  </RippleButton>
-                </View>
-              ) : (
-                <RippleButton style={styles.modalButton} textStyle={styles.modalButtonText} onPress={onClose}>
-                  FECHAR
-                </RippleButton>
-              )}
+              <RippleButton style={styles.modalButton} textStyle={styles.modalButtonText} onPress={onClose}>
+                FECHAR
+              </RippleButton>
             </View>
           </Animated.View>
         </View>
@@ -689,16 +538,23 @@ const RotaDetailModal = ({ isVisible, rota, onClose, onSave }) => {
   )
 }
 
-// Modify the HistoricoSoltura component to remove the native header and fix navigation
+// Modify the HistoricoSoltura component to add search, rows per page, and new columns
 export default function HistoricoSoltura() {
   const navigation = useNavigation()
   const [selectedRota, setSelectedRota] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [rotasData, setRotasData] = useState([])
+  const [filteredRotas, setFilteredRotas] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const isSmallScreen = screenWidth < 360
   const padding = getResponsivePadding()
+
+  // Estados para pesquisa e paginação
+  const [searchQuery, setSearchQuery] = useState("")
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const rowsPerPageOptions = [5, 10, 15, 20]
 
   // Obter a data atual formatada
   const getCurrentDate = () => {
@@ -729,6 +585,8 @@ export default function HistoricoSoltura() {
           celular: "(62) 98765-4321",
           lider: "Roberto Alves",
           observacoes: "Rota iniciada sem intercorrências",
+          tipo: "Coleta",
+          turno: "Diurno",
         },
         {
           id: "2",
@@ -742,6 +600,8 @@ export default function HistoricoSoltura() {
           celular: "(62) 91234-5678",
           lider: "Fernanda Lima",
           observacoes: "Atraso devido a congestionamento",
+          tipo: "Seletiva",
+          turno: "Vespertino",
         },
         {
           id: "3",
@@ -755,6 +615,8 @@ export default function HistoricoSoltura() {
           celular: "(62) 99876-5432",
           lider: "Marcelo Souza",
           observacoes: "",
+          tipo: "Cata Treco",
+          turno: "Diurno",
         },
         {
           id: "4",
@@ -768,6 +630,8 @@ export default function HistoricoSoltura() {
           celular: "(62) 98888-7777",
           lider: "Juliana Pereira",
           observacoes: "Veículo precisou de manutenção durante o percurso",
+          tipo: "Varrição",
+          turno: "Noturno",
         },
         {
           id: "5",
@@ -781,12 +645,152 @@ export default function HistoricoSoltura() {
           celular: "(62) 97777-8888",
           lider: "Roberto Alves",
           observacoes: "",
+          tipo: "Coleta",
+          turno: "Vespertino",
+        },
+        {
+          id: "6",
+          data: currentDate,
+          hora: "14:15",
+          motorista: "Fernanda Lima",
+          prefixo: "PQR-1234",
+          setor: "Norte",
+          coletores: ["Marcelo Souza", "Juliana Pereira"],
+          frequencia: "Diária",
+          celular: "(62) 96666-7777",
+          lider: "Carlos Ferreira",
+          observacoes: "Rota concluída antes do previsto",
+          tipo: "Seletiva",
+          turno: "Diurno",
+        },
+        {
+          id: "7",
+          data: currentDate,
+          hora: "15:30",
+          motorista: "Roberto Alves",
+          prefixo: "STU-5678",
+          setor: "Sul",
+          coletores: ["Ana Costa", "Pedro Santos"],
+          frequencia: "Semanal",
+          celular: "(62) 95555-6666",
+          lider: "Maria Oliveira",
+          observacoes: "",
+          tipo: "Cata Treco",
+          turno: "Vespertino",
+        },
+        {
+          id: "8",
+          data: currentDate,
+          hora: "16:45",
+          motorista: "Juliana Pereira",
+          prefixo: "VWX-9012",
+          setor: "Leste",
+          coletores: ["Carlos Ferreira"],
+          frequencia: "Diária",
+          celular: "(62) 94444-5555",
+          lider: "João Silva",
+          observacoes: "Condições climáticas adversas",
+          tipo: "Varrição",
+          turno: "Noturno",
+        },
+        {
+          id: "9",
+          data: currentDate,
+          hora: "17:30",
+          motorista: "Marcelo Souza",
+          prefixo: "YZA-3456",
+          setor: "Oeste",
+          coletores: ["Fernanda Lima", "Roberto Alves"],
+          frequencia: "Quinzenal",
+          celular: "(62) 93333-4444",
+          lider: "Ana Costa",
+          observacoes: "",
+          tipo: "Coleta",
+          turno: "Diurno",
+        },
+        {
+          id: "10",
+          data: currentDate,
+          hora: "18:15",
+          motorista: "João Silva",
+          prefixo: "BCD-7890",
+          setor: "Centro",
+          coletores: ["Juliana Pereira", "Marcelo Souza"],
+          frequencia: "Diária",
+          celular: "(62) 92222-3333",
+          lider: "Pedro Santos",
+          observacoes: "Trânsito intenso na região",
+          tipo: "Seletiva",
+          turno: "Vespertino",
+        },
+        {
+          id: "11",
+          data: currentDate,
+          hora: "19:30",
+          motorista: "Ana Costa",
+          prefixo: "EFG-1234",
+          setor: "Norte",
+          coletores: ["Carlos Ferreira", "Fernanda Lima"],
+          frequencia: "Semanal",
+          celular: "(62) 91111-2222",
+          lider: "Roberto Alves",
+          observacoes: "",
+          tipo: "Cata Treco",
+          turno: "Noturno",
+        },
+        {
+          id: "12",
+          data: currentDate,
+          hora: "20:45",
+          motorista: "Pedro Santos",
+          prefixo: "HIJ-5678",
+          setor: "Sul",
+          coletores: ["Juliana Pereira"],
+          frequencia: "Diária",
+          celular: "(62) 90000-1111",
+          lider: "Marcelo Souza",
+          observacoes: "Equipamento com defeito",
+          tipo: "Varrição",
+          turno: "Diurno",
         },
       ]
       setRotasData(initialData)
+      setFilteredRotas(initialData)
       setIsLoading(false)
     }, 1500)
   }, [])
+
+  // Filtrar dados com base na pesquisa
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredRotas(rotasData)
+      setCurrentPage(1)
+    } else {
+      const lowercaseQuery = searchQuery.toLowerCase()
+      const filtered = rotasData.filter(
+        (rota) =>
+          rota.motorista.toLowerCase().includes(lowercaseQuery) ||
+          rota.prefixo.toLowerCase().includes(lowercaseQuery) ||
+          rota.setor.toLowerCase().includes(lowercaseQuery) ||
+          rota.tipo.toLowerCase().includes(lowercaseQuery) ||
+          rota.turno.toLowerCase().includes(lowercaseQuery) ||
+          rota.frequencia.toLowerCase().includes(lowercaseQuery) ||
+          rota.hora.includes(lowercaseQuery),
+      )
+      setFilteredRotas(filtered)
+      setCurrentPage(1)
+    }
+  }, [searchQuery, rotasData])
+
+  // Calcular dados paginados
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * rowsPerPage
+    const endIndex = startIndex + rowsPerPage
+    return filteredRotas.slice(startIndex, endIndex)
+  }
+
+  // Calcular total de páginas
+  const totalPages = Math.ceil(filteredRotas.length / rowsPerPage)
 
   const openModal = (rota) => {
     setSelectedRota(rota)
@@ -796,13 +800,6 @@ export default function HistoricoSoltura() {
   const closeModal = () => {
     setModalVisible(false)
     setSelectedRota(null)
-  }
-
-  // Função para salvar as alterações da rota
-  const saveRotaChanges = (updatedRota) => {
-    const updatedRotas = rotasData.map((rota) => (rota.id === updatedRota.id ? updatedRota : rota))
-    setRotasData(updatedRotas)
-    setModalVisible(false)
   }
 
   // Add useFocusEffect to remove the native header
@@ -859,6 +856,8 @@ export default function HistoricoSoltura() {
       { key: "motorista", title: "Motorista", flex: 2 },
       { key: "prefixo", title: "Prefixo", flex: 1.5 },
       { key: "setor", title: "Setor", flex: 1 },
+      { key: "tipo", title: "Tipo", flex: 1.2 },
+      { key: "turno", title: "Turno", flex: 1.2 },
       { key: "frequencia", title: "Freq.", flex: 1 },
     ]
   }
@@ -907,6 +906,8 @@ export default function HistoricoSoltura() {
                 fontSize: normalize(isSmallScreen ? 11 : 13),
                 paddingHorizontal: isSmallScreen ? 4 : 8,
                 ...(column.key === "setor" ? { fontWeight: "500", color: "#8BC34A" } : {}),
+                ...(column.key === "tipo" ? { fontWeight: "500", color: "#5C6BC0" } : {}),
+                ...(column.key === "turno" ? { fontWeight: "500", color: "#FF9800" } : {}),
               },
             ]}
             numberOfLines={1}
@@ -916,6 +917,51 @@ export default function HistoricoSoltura() {
           </Text>
         ))}
       </TouchableOpacity>
+    )
+  }
+
+  // Componente para paginação
+  const Pagination = () => {
+    return (
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.paginationButtonText}>«</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.paginationButtonText}>‹</Text>
+        </TouchableOpacity>
+
+        <View style={styles.paginationInfo}>
+          <Text style={styles.paginationText}>
+            {currentPage} de {totalPages}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+        >
+          <Text style={styles.paginationButtonText}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages}
+        >
+          <Text style={styles.paginationButtonText}>»</Text>
+        </TouchableOpacity>
+      </View>
     )
   }
 
@@ -980,24 +1026,41 @@ export default function HistoricoSoltura() {
         <Text style={[styles.dateText, isSmallScreen && { fontSize: normalize(12) }]}>Data: {getCurrentDate()}</Text>
       </View>
 
+      {/* Adicionar campo de pesquisa com espaçamento adequado */}
+      <View style={[styles.searchSection, { paddingHorizontal: padding }]}>
+        <SearchInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Pesquisar por motorista, prefixo, setor..."
+          style={styles.searchInput}
+        />
+      </View>
+
       <View
         style={[
           styles.content,
           {
             padding: padding,
-            paddingBottom: Math.max(padding, 10), // Garantir padding mínimo na parte inferior
+            paddingTop: 5,
+            paddingBottom: Math.max(padding, 10),
           },
         ]}
       >
         <View style={styles.tableContainer}>
           {renderTableHeader()}
           <FlatList
-            data={rotasData}
+            data={getPaginatedData()}
             keyExtractor={(item) => item.id}
             renderItem={renderTableRow}
             contentContainerStyle={styles.tableContent}
             showsVerticalScrollIndicator={false}
           />
+        </View>
+
+        {/* Adicionar controles de paginação e linhas por página */}
+        <View style={styles.tableControls}>
+          <RowsPerPageSelector value={rowsPerPage} options={rowsPerPageOptions} onChange={setRowsPerPage} />
+          <Pagination />
         </View>
 
         <View style={[styles.buttonContainer, { marginBottom: isSmallScreen ? 10 : 20 }]}>
@@ -1017,7 +1080,7 @@ export default function HistoricoSoltura() {
         </View>
       </View>
 
-      <RotaDetailModal isVisible={modalVisible} rota={selectedRota} onClose={closeModal} onSave={saveRotaChanges} />
+      <RotaDetailModal isVisible={modalVisible} rota={selectedRota} onClose={closeModal} />
     </SafeAreaView>
   )
 }
@@ -1083,8 +1146,56 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "500",
   },
+  // Estilos para a seção de pesquisa
+  searchSection: {
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    zIndex: 20,
+    marginBottom: 10,
+  },
+  searchContainer: {
+    width: "100%",
+    zIndex: 25,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 45,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  searchIcon: {
+    fontSize: 16,
+    color: "#999",
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: normalize(14),
+    color: "#333",
+    height: "100%",
+  },
+  clearSearchButton: {
+    padding: 5,
+  },
+  clearSearchButtonText: {
+    fontSize: normalize(16),
+    color: "#999",
+    fontWeight: "bold",
+  },
   content: {
     flex: 1,
+    marginTop: 5,
   },
   tableContainer: {
     flex: 1,
@@ -1098,6 +1209,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
+    marginTop: 5,
+    zIndex: 1,
   },
   tableHeader: {
     flexDirection: "row",
@@ -1129,6 +1242,108 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     color: "#333",
+  },
+  // Estilos para controles de tabela (paginação e linhas por página)
+  tableControls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 15,
+    paddingHorizontal: 5,
+  },
+  // Estilos para seletor de linhas por página
+  rowsPerPageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  rowsPerPageLabel: {
+    fontSize: normalize(12),
+    color: "#666",
+    marginRight: 8,
+  },
+  rowsPerPageSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  rowsPerPageValue: {
+    fontSize: normalize(12),
+    color: "#333",
+    marginRight: 5,
+  },
+  rowsPerPageArrow: {
+    fontSize: normalize(10),
+    color: "#666",
+  },
+  rowsPerPageDropdown: {
+    position: "absolute",
+    top: "100%",
+    right: 0,
+    backgroundColor: "white",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 1000,
+    marginTop: 5,
+  },
+  rowsPerPageOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  rowsPerPageOptionSelected: {
+    backgroundColor: "#f0f7e6",
+  },
+  rowsPerPageOptionText: {
+    fontSize: normalize(12),
+    color: "#333",
+  },
+  rowsPerPageOptionTextSelected: {
+    color: "#8BC34A",
+    fontWeight: "bold",
+  },
+  // Estilos para paginação
+  paginationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  paginationButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  paginationButtonText: {
+    fontSize: normalize(14),
+    color: "#666",
+    fontWeight: "bold",
+  },
+  paginationInfo: {
+    marginHorizontal: 8,
+  },
+  paginationText: {
+    fontSize: normalize(12),
+    color: "#666",
   },
   buttonContainer: {
     marginTop: 10,
@@ -1323,18 +1538,6 @@ const styles = StyleSheet.create({
     fontSize: normalize(14),
     letterSpacing: 0.5,
   },
-  // Estilos para edição
-  editButton: {
-    backgroundColor: "#8BC34A",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 15,
-  },
-  editButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: normalize(12),
-  },
   // Estilos para o autocomplete
   autocompleteContainer: {
     position: "relative",
@@ -1409,151 +1612,6 @@ const styles = StyleSheet.create({
     color: "#8BC34A",
     fontWeight: "bold",
   },
-  editAutocomplete: {
-    marginTop: 5,
-    zIndex: 100,
-  },
-  addColetorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-    zIndex: 100,
-    position: "relative",
-  },
-  coletorAutocomplete: {
-    flex: 1,
-    marginRight: 10,
-    zIndex: 100,
-  },
-  addColetorButton: {
-    backgroundColor: "#8BC34A",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 101, // Higher than autocomplete
-  },
-  // Plus icon styles
-  plusIcon: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  plusHorizontal: {
-    width: 14,
-    height: 2,
-    backgroundColor: "white",
-    position: "absolute",
-  },
-  plusVertical: {
-    width: 2,
-    height: 14,
-    backgroundColor: "white",
-    position: "absolute",
-  },
-  // Minus icon styles
-  minusIcon: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  minusHorizontal: {
-    width: 12,
-    height: 2,
-    backgroundColor: "white",
-    position: "absolute",
-  },
-  removeColetorButton: {
-    backgroundColor: "#e53935",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 10,
-    zIndex: 20,
-  },
-  observacoesInput: {
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    padding: 12,
-    minHeight: 100,
-    textAlignVertical: "top",
-    fontSize: normalize(14),
-    color: "#333",
-  },
-  autoObservacoesContainer: {
-    marginTop: 15,
-    backgroundColor: "#FFF9C4",
-    padding: 12,
-    borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: "#FBC02D",
-  },
-  autoObservacoesTitle: {
-    fontWeight: "bold",
-    fontSize: normalize(14),
-    color: "#333",
-    marginBottom: 5,
-  },
-  autoObservacoesText: {
-    fontSize: normalize(14),
-    color: "#333",
-    marginBottom: 8,
-  },
-  autoObservacoesNote: {
-    fontSize: normalize(12),
-    color: "#666",
-    fontStyle: "italic",
-  },
-  editButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  cancelButton: {
-    backgroundColor: "#f5f5f5",
-    padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 25,
-    width: "48%",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    height: 45,
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontWeight: "600",
-    fontSize: normalize(14),
-    letterSpacing: 0.5,
-  },
-  saveButton: {
-    backgroundColor: "#8BC34A",
-    padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 25,
-    width: "48%",
-    height: 45,
-  },
-  saveButtonText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: normalize(14),
-    letterSpacing: 0.5,
-  },
-  dropdownModalOverlay: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
   // Loading screen styles
   loadingScreenContainer: {
     flex: 1,
@@ -1569,6 +1627,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+  },
+  searchInputContainerFocused: {
+    borderColor: "#8BC34A",
+    borderWidth: 1.5,
+    backgroundColor: "#f9f9f9",
+    shadowColor: "#8BC34A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  searchIcon: {
+    fontSize: 16,
+    color: "#8BC34A",
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: normalize(14),
+    color: "#333",
+    height: "100%",
+    paddingVertical: 8,
+  },
+  clearSearchButton: {
+    padding: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearSearchButtonText: {
+    fontSize: normalize(14),
+    color: "#999",
+    fontWeight: "bold",
   },
 })
 

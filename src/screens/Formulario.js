@@ -1188,8 +1188,8 @@ const TimeSelector = ({ time, setTime, label, error }) => {
   )
 }
 
-// Modificar o SolturaInfoModal para não fechar automaticamente e adicionar mensagem de sucesso
-const SolturaInfoModal = ({ visible, onClose, formData }) => {
+// Modal de confirmação para exibir os dados da soltura
+const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmation = false }) => {
   const scaleAnim = useRef(new Animated.Value(0.5)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
 
@@ -1225,6 +1225,23 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
       }),
     ]).start(() => {
       onClose && onClose()
+    })
+  }
+
+  const handleConfirm = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.5,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onConfirm && onConfirm()
     })
   }
 
@@ -1265,7 +1282,6 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
         >
           <View style={styles.solturaHeader}>
             <Text style={styles.solturaTitle}>Soltura de Frota</Text>
-            <Text style={styles.solturaSuccessMessage}>Frota registrada com sucesso!</Text>
             <View style={styles.solturaHeaderUnderline} />
           </View>
 
@@ -1321,15 +1337,133 @@ const SolturaInfoModal = ({ visible, onClose, formData }) => {
                 {formData.coletores && formData.coletores.length > 0 ? formData.coletores.join(", ") : "N/A"}
               </Text>
             </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Celular:</Text>
+              <Text style={styles.solturaValue}>{formData.celular || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Líder:</Text>
+              <Text style={styles.solturaValue}>{formData.lider || "N/A"}</Text>
+            </View>
           </View>
 
-          <Pressable
-            style={styles.solturaCloseButton}
-            onPress={handleClose}
-            android_ripple={{ color: "rgba(76, 175, 80, 0.2)", borderless: false }}
-          >
-            <Text style={styles.solturaCloseButtonText}>OK</Text>
-          </Pressable>
+          {isConfirmation ? (
+            <View style={styles.confirmationButtonsContainer}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={handleClose}
+                android_ripple={{ color: "rgba(244, 67, 54, 0.2)", borderless: false }}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={styles.confirmButton}
+                onPress={handleConfirm}
+                android_ripple={{ color: "rgba(76, 175, 80, 0.2)", borderless: false }}
+              >
+                <Text style={styles.confirmButtonText}>OK</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.solturaCloseButton}
+              onPress={handleClose}
+              android_ripple={{ color: "rgba(76, 175, 80, 0.2)", borderless: false }}
+            >
+              <Text style={styles.solturaCloseButtonText}>OK</Text>
+            </Pressable>
+          )}
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+// Componente de mensagem de sucesso estilizada
+const SuccessMessage = ({ visible, onClose }) => {
+  const scaleAnim = useRef(new Animated.Value(0.5)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
+  const translateYAnim = useRef(new Animated.Value(-50)).current
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateYAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
+      // Auto-close after 3 seconds
+      const timer = setTimeout(() => {
+        handleClose()
+      }, 3000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [visible])
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: -50,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose && onClose()
+    })
+  }
+
+  if (!visible) return null
+
+  return (
+    <Modal transparent visible={visible} animationType="none">
+      <View style={styles.successMessageOverlay}>
+        <Animated.View
+          style={[
+            styles.successMessageContainer,
+            {
+              opacity: opacityAnim,
+              transform: [
+                { scale: scaleAnim },
+                { translateY: translateYAnim }
+              ],
+            },
+          ]}
+        >
+          <View style={styles.successIconContainer}>
+            <Text style={styles.successIconText}>✓</Text>
+          </View>
+          <Text style={styles.successMessageTitle}>Soltura Registrada!</Text>
+          <Text style={styles.successMessageText}>
+            Sua soltura de frota foi registrada com sucesso no sistema.
+          </Text>
         </Animated.View>
       </View>
     </Modal>
@@ -1524,7 +1658,8 @@ const Formulario = ({ navigation }) => {
   const [horaSaidaFrota, setHoraSaidaFrota] = useState(null)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSolturaInfo, setShowSolturaInfo] = useState(false)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [showHistoryLoading, setShowHistoryLoading] = useState(false)
   const [formData, setFormData] = useState({})
   const formScaleAnim = useRef(new Animated.Value(0.95)).current
@@ -1661,64 +1796,69 @@ const Formulario = ({ navigation }) => {
     setTipoColeta("") // Changed from setTipoFrota to setTipoColeta
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (validateForm()) {
-      setIsSubmitting(true)
-
-      try {
-        console.log("Enviando formulário...")
-
-        // Preparar dados para envio
-        const solturaData = {
-          motorista: motorista,
-          prefixo: prefixo,
-          coletores: coletores,
-          frequencia: frequencia,
-          setor: setor,
-          celular: celular,
-          lider: lider,
-          hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
-          hora_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
-          turno: turno,
-          tipo_coleta: tipo_coleta, // Changed from tipoFrota to tipo_coleta
-          nome_lider: lider, // Usando o campo lider como nome_lider
-          telefone_lider: celular, // Usando o campo celular como telefone_lider
-        }
-
-        // Enviar para a API
-        const response = await SolturaService.criarSoltura(solturaData)
-        console.log("Resposta do servidor após envio:", response)
-
-        // Salvar os dados do formulário para exibir no modal
-        setFormData({
-          motorista,
-          prefixo,
-          dataHora,
-          frequencia,
-          setor,
-          coletores,
-          celular,
-          lider,
-          horaEntregaChave,
-          horaSaidaFrota,
-          turno,
-          tipoFrota: tipo_coleta, // Display the tipo_coleta value as tipoFrota in the modal
-          ...response, // Adicionar dados da resposta da API
-        })
-
-        // Mostrar modal de sucesso
-        setShowSolturaInfo(true)
-
-        // Resetar formulário
-        resetForm()
-      } catch (error) {
-        console.error("Erro ao enviar formulário:", error)
-        Alert.alert("Erro", error.message || "Ocorreu um erro ao registrar a soltura. Tente novamente.", [
-          { text: "OK" },
-        ])
-      } finally {
-        setIsSubmitting(false)
+      // Preparar dados para exibir no modal de confirmação
+      const formDataToConfirm = {
+        motorista,
+        prefixo,
+        dataHora,
+        frequencia,
+        setor,
+        coletores,
+        celular,
+        lider,
+        horaEntregaChave,
+        horaSaidaFrota,
+        turno,
+        tipoFrota: tipo_coleta, // Display the tipo_coleta value as tipoFrota in the modal
       }
+      
+      setFormData(formDataToConfirm)
+      setShowConfirmationModal(true)
+    }
+  }
+
+  const handleConfirmSubmit = async () => {
+    setIsSubmitting(true)
+    setShowConfirmationModal(false)
+
+    try {
+      console.log("Enviando formulário...")
+
+      // Preparar dados para envio
+      const solturaData = {
+        motorista: motorista,
+        prefixo: prefixo,
+        coletores: coletores,
+        frequencia: frequencia,
+        setor: setor,
+        celular: celular,
+        lider: lider,
+        hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
+        hora_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
+        turno: turno,
+        tipo_coleta: tipo_coleta, // Changed from tipoFrota to tipo_coleta
+        nome_lider: lider, // Usando o campo lider como nome_lider
+        telefone_lider: celular, // Usando o campo celular como telefone_lider
+      }
+
+      // Enviar para a API
+      const response = await SolturaService.criarSoltura(solturaData)
+      console.log("Resposta do servidor após envio:", response)
+
+      // Mostrar mensagem de sucesso
+      setShowSuccessMessage(true)
+
+      // Resetar formulário
+      resetForm()
+    } catch (error) {
+      console.error("Erro ao enviar formulário:", error)
+      Alert.alert("Erro", error.message || "Ocorreu um erro ao registrar a soltura. Tente novamente.", [
+        { text: "OK" },
+      ])
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -2079,7 +2219,7 @@ const Formulario = ({ navigation }) => {
                 </View>
               </TouchableArea>
 
-              {/* Botão de envio */}
+              {/* Botão de enviar - Agora abre o modal de confirmação */}
               <Ripple
                 style={[
                   styles.submitButton,
@@ -2102,8 +2242,20 @@ const Formulario = ({ navigation }) => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Componente para exibir as informações de soltura */}
-        <SolturaInfoModal visible={showSolturaInfo} onClose={() => setShowSolturaInfo(false)} formData={formData} />
+        {/* Modal de confirmação antes de enviar */}
+        <SolturaInfoModal 
+          visible={showConfirmationModal} 
+          onClose={() => setShowConfirmationModal(false)} 
+          formData={formData}
+          onConfirm={handleConfirmSubmit}
+          isConfirmation={true}
+        />
+
+        {/* Mensagem de sucesso estilizada */}
+        <SuccessMessage 
+          visible={showSuccessMessage} 
+          onClose={() => setShowSuccessMessage(false)} 
+        />
 
         {/* Tela de carregamento do histórico */}
         <HistoryLoadingScreen visible={showHistoryLoading} onClose={() => setShowHistoryLoading(false)} />
@@ -2456,56 +2608,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  successContainer: {
-    backgroundColor: "white",
-    borderRadius: 15,
-    padding: 25,
-    alignItems: "center",
-    width: "80%",
-    maxWidth: 300,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  successIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#4CAF50",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  successIcon: {
-    color: "white",
-    fontSize: 36,
-    fontWeight: "bold",
-  },
-  successTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 10,
-  },
-  successText: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  successCloseButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-  },
-  successCloseButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
   // Estilos para o modal de informações de soltura
   solturaInfoContainer: {
     backgroundColor: "white",
@@ -2570,13 +2672,98 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  solturaSuccessMessage: {
+  // Confirmation modal buttons
+  confirmationButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  cancelButton: {
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "#F44336",
+    flex: 1,
+    marginRight: 10,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: "#F44336",
+    fontWeight: "bold",
     fontSize: 16,
-    color: "#4CAF50",
-    marginTop: 5,
-    marginBottom: 5,
-    fontWeight: "500",
+  },
+  confirmButton: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    flex: 1,
+    marginLeft: 10,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  // Success message styles
+  successMessageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  successMessageContainer: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 25,
+    width: "80%",
+    maxWidth: 350,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  successIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  successIconText: {
+    color: "white",
+    fontSize: 40,
+    fontWeight: "bold",
+  },
+  successMessageTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
     textAlign: "center",
+  },
+  successMessageText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
   },
   // Improved loading screen container
   loadingScreenContainer: {
@@ -2731,4 +2918,3 @@ const styles = StyleSheet.create({
 })
 
 export default Formulario
-
