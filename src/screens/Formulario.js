@@ -249,7 +249,18 @@ const useActiveAutocomplete = () => {
 }
 
 // Autocomplete modificado para manter o dropdown aberto até o usuário selecionar um item
-const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label, error, zIndex = 1, id }) => {
+const Autocomplete = ({
+  data,
+  value,
+  onChangeText,
+  onSelect,
+  placeholder,
+  label,
+  error,
+  zIndex = 1,
+  id,
+  disabled = false,
+}) => {
   const [filteredData, setFilteredData] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -454,12 +465,13 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
               borderColor,
               borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
+              opacity: disabled ? 0.6 : 1,
             },
           ]}
         >
           <TextInput
             ref={inputRef}
-            style={[styles.animatedInput, { pointerEvents: "auto", fontSize: 16 }]} // Reduced font size
+            style={[styles.animatedInput, { pointerEvents: disabled ? "none" : "auto", fontSize: 16 }]} // Reduced font size
             placeholder={isFocused ? placeholder : ""}
             placeholderTextColor="#999"
             value={value}
@@ -468,6 +480,7 @@ const Autocomplete = ({ data, value, onChangeText, onSelect, placeholder, label,
             onBlur={handleBlur}
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!disabled}
           />
           {value && value.length > 0 && (
             <Pressable
@@ -793,6 +806,185 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
 
       <Text style={styles.coletoresCount}>
         {coletores.length}/{maxColetores} coletores
+      </Text>
+    </View>
+  )
+}
+
+// Replace the entire LideresSelector component with this simplified version
+const LideresSelector = ({ lideres = [], setLideres, availableLideres = [], maxLideres = 2, label, error }) => {
+  // Simple state management
+  const [inputValue, setInputValue] = useState("")
+  const inputRef = useRef(null)
+  const inputHeight = getInputHeight()
+
+  // Memoize filtered leaders to prevent recalculations on every render
+  const filteredLeaders = React.useMemo(() => {
+    if (!inputValue.trim()) return []
+    return (availableLideres || []).filter(
+      (item) =>
+        item &&
+        typeof item === "string" &&
+        item.toLowerCase().includes(inputValue.toLowerCase()) &&
+        !(lideres || []).includes(item),
+    )
+  }, [inputValue, availableLideres, lideres])
+
+  // Add a leader from input
+  const addLeader = () => {
+    if (inputValue.trim() && (lideres || []).length < maxLideres && !(lideres || []).includes(inputValue.trim())) {
+      setLideres([...(lideres || []), inputValue.trim()])
+      setInputValue("")
+
+      // Focus input after adding
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus()
+        }
+      }, 50)
+    }
+  }
+
+  // Add a leader from dropdown
+  const selectLeader = (item) => {
+    if ((lideres || []).length < maxLideres && !(lideres || []).includes(item)) {
+      setLideres([...(lideres || []), item])
+      setInputValue("")
+    }
+  }
+
+  // Remove a leader
+  const removeLeader = (index) => {
+    const newLideres = [...(lideres || [])]
+    newLideres.splice(index, 1)
+    setLideres(newLideres)
+  }
+
+  return (
+    <View style={styles.inputWrapper}>
+      <Text
+        style={{
+          position: "absolute",
+          left: 15,
+          top: -8,
+          fontSize: 12,
+          color: "#4CAF50",
+          backgroundColor: "white",
+          paddingHorizontal: 4,
+          zIndex: 1,
+          fontWeight: "500",
+        }}
+      >
+        {label}
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 12,
+          backgroundColor: "#fff",
+          paddingHorizontal: 15,
+          borderColor: "#ddd",
+          borderWidth: 1.5,
+          height: inputHeight * 1.1, // Make the input field slightly larger
+          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+          elevation: 2,
+        }}
+      >
+        <TextInput
+          ref={inputRef}
+          style={[styles.animatedInput, { flex: 1, fontSize: 16 }]}
+          placeholder="Nome do líder"
+          placeholderTextColor="#999"
+          value={inputValue}
+          onChangeText={setInputValue}
+        />
+        <Pressable
+          style={[
+            styles.addButton,
+            {
+              opacity: (lideres || []).length >= maxLideres ? 0.5 : 1,
+              width: getResponsiveSize(40), // Slightly larger button
+              height: getResponsiveSize(40), // Slightly larger button
+              borderRadius: getResponsiveSize(20),
+            },
+          ]}
+          onPress={addLeader}
+          disabled={(lideres || []).length >= maxLideres}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
+          <View style={styles.plusIcon}>
+            <View style={styles.plusHorizontal} />
+            <View style={styles.plusVertical} />
+          </View>
+        </Pressable>
+      </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {/* Simple dropdown */}
+      {filteredLeaders.length > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: inputHeight * 1.1 + 5, // Adjusted for the larger input field
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            elevation: 1000,
+            backgroundColor: "white",
+            borderWidth: 1,
+            borderColor: "#eee",
+            borderRadius: 12,
+            maxHeight: 200,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+          }}
+        >
+          <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
+            {filteredLeaders.map((item, index) => (
+              <Pressable
+                key={index.toString()}
+                style={({ pressed }) => [styles.dropdownItem, pressed ? { backgroundColor: "#f0f0f0" } : {}]}
+                onPress={() => selectLeader(item)}
+              >
+                <Text style={styles.dropdownItemText}>{item}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Selected leaders list */}
+      <View style={styles.coletoresList}>
+        {(lideres || []).map((item, index) => (
+          <View key={index} style={styles.coletorItem}>
+            <Text style={styles.coletorName}>{item}</Text>
+            <Pressable
+              style={[
+                styles.removeButton,
+                {
+                  width: getResponsiveSize(32), // Slightly larger button
+                  height: getResponsiveSize(32), // Slightly larger button
+                  borderRadius: getResponsiveSize(16),
+                },
+              ]}
+              onPress={() => removeLeader(index)}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <View style={styles.minusIcon}>
+                <View style={styles.minusHorizontal} />
+              </View>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
+      <Text style={styles.coletoresCount}>
+        {(lideres || []).length}/{maxLideres} líderes
       </Text>
     </View>
   )
@@ -1188,6 +1380,91 @@ const TimeSelector = ({ time, setTime, label, error }) => {
   )
 }
 
+// Add a new CheckboxGroup component after the TimeSelector component
+const CheckboxGroup = ({ options, value, onChange, label, error }) => {
+  const [isFocused, setIsFocused] = useState(false)
+  const inputHeight = getInputHeight()
+  const borderColorAnim = useRef(new Animated.Value(0)).current
+  const labelPosition = useRef(new Animated.Value(value ? 1 : 0)).current
+
+  useEffect(() => {
+    Animated.timing(labelPosition, {
+      toValue: isFocused || value ? 1 : 0,
+      duration: 100,
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused, value, labelPosition])
+
+  useEffect(() => {
+    Animated.timing(borderColorAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 100,
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused, borderColorAnim])
+
+  const handleSelect = (option) => {
+    onChange(option)
+    setIsFocused(false)
+  }
+
+  const labelStyle = {
+    position: "absolute",
+    left: 15,
+    top: -8,
+    fontSize: 12,
+    color: "#4CAF50",
+    backgroundColor: "white",
+    paddingHorizontal: 4,
+    zIndex: 1,
+    fontWeight: "500",
+  }
+
+  const borderColor = borderColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ddd", "#4CAF50"],
+  })
+
+  return (
+    <View style={styles.inputWrapper}>
+      <Animated.Text style={labelStyle}>{label}</Animated.Text>
+
+      <Animated.View
+        style={[
+          styles.checkboxContainer,
+          {
+            borderColor,
+            borderWidth: 1.5,
+            borderRadius: 12,
+          },
+        ]}
+      >
+        {options.map((option, index) => (
+          <Pressable
+            key={index}
+            style={[
+              styles.checkboxOption,
+              { borderBottomWidth: index < options.length - 1 ? 1 : 0 },
+              value === option && styles.checkboxOptionSelected,
+            ]}
+            onPress={() => handleSelect(option)}
+          >
+            <View style={styles.checkboxInner}>
+              <View style={[styles.checkbox, value === option && styles.checkboxSelected]}>
+                {value === option && <View style={styles.checkboxDot} />}
+              </View>
+              <Text style={[styles.checkboxLabel, value === option && styles.checkboxLabelSelected]}>{option}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </Animated.View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  )
+}
+
 // Modal de confirmação para exibir os dados da soltura
 const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmation = false }) => {
   const scaleAnim = useRef(new Animated.Value(0.5)).current
@@ -1317,8 +1594,8 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
             </View>
 
             <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Tipo de Frota:</Text>
-              <Text style={styles.solturaValue}>{formData.tipoFrota || "N/A"}</Text>
+              <Text style={styles.solturaLabel}>Tipo de Serviço:</Text>
+              <Text style={styles.solturaValue}>{formData.tipoServico || "N/A"}</Text>
             </View>
 
             <View style={styles.solturaRow}>
@@ -1327,8 +1604,18 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
             </View>
 
             <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Garagem:</Text>
+              <Text style={styles.solturaValue}>{formData.garagem || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
               <Text style={styles.solturaLabel}>Setor:</Text>
               <Text style={styles.solturaValue}>{formData.setor || "N/A"}</Text>
+            </View>
+
+            <View style={styles.solturaRow}>
+              <Text style={styles.solturaLabel}>Rota:</Text>
+              <Text style={styles.solturaValue}>{formData.rota || "N/A"}</Text>
             </View>
 
             <View style={styles.solturaRow}>
@@ -1344,8 +1631,10 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
             </View>
 
             <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Líder:</Text>
-              <Text style={styles.solturaValue}>{formData.lider || "N/A"}</Text>
+              <Text style={styles.solturaLabel}>Líderes:</Text>
+              <Text style={styles.solturaValue}>
+                {formData.lideres && formData.lideres.length > 0 ? formData.lideres.join(", ") : "N/A"}
+              </Text>
             </View>
           </View>
 
@@ -1450,10 +1739,7 @@ const SuccessMessage = ({ visible, onClose }) => {
             styles.successMessageContainer,
             {
               opacity: opacityAnim,
-              transform: [
-                { scale: scaleAnim },
-                { translateY: translateYAnim }
-              ],
+              transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
             },
           ]}
         >
@@ -1461,9 +1747,7 @@ const SuccessMessage = ({ visible, onClose }) => {
             <Text style={styles.successIconText}>✓</Text>
           </View>
           <Text style={styles.successMessageTitle}>Soltura Registrada!</Text>
-          <Text style={styles.successMessageText}>
-            Sua soltura de frota foi registrada com sucesso no sistema.
-          </Text>
+          <Text style={styles.successMessageText}>Sua soltura de frota foi registrada com sucesso no sistema.</Text>
         </Animated.View>
       </View>
     </Modal>
@@ -1650,9 +1934,10 @@ const Formulario = ({ navigation }) => {
   const [dataHora, setDataHora] = useState(new Date())
   const [frequencia, setFrequencia] = useState("")
   const [setor, setSetor] = useState("")
+  const [rota, setRota] = useState("")
   const [coletores, setColetores] = useState([])
   const [celular, setCelular] = useState("")
-  const [lider, setLider] = useState("")
+  const [lideres, setLideres] = useState([]) // Changed from lider to lideres array
   // Novos estados para os campos adicionados
   const [horaEntregaChave, setHoraEntregaChave] = useState(null)
   const [horaSaidaFrota, setHoraSaidaFrota] = useState(null)
@@ -1671,6 +1956,7 @@ const Formulario = ({ navigation }) => {
   const [coletoresData, setColetoresData] = useState([])
   const [frequenciasData, setFrequenciasData] = useState([])
   const [setoresData, setSetoresData] = useState([])
+  const [garagensData, setGaragensData] = useState(["PA1", "PA2", "PA3", "PA4"])
   const [lideresData, setLideresData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadingError, setLoadingError] = useState(null)
@@ -1682,10 +1968,60 @@ const Formulario = ({ navigation }) => {
   const isTablet = deviceType === "tablet"
 
   const [turno, setTurno] = useState("")
-  const [tipo_coleta, setTipoColeta] = useState("") // Changed from tipoFrota to tipo_coleta
+  const [tipoServico, setTipoServico] = useState("") // Changed from tipo_coleta to tipoServico
+  const [garagem, setGaragem] = useState("")
 
-  const [turnosData] = useState(["Diurno", "Vespertino", "Noturno"])
-  const [tiposFrotaData] = useState(["Seletiva", "Coleta", "Cata Treco", "Varrição"])
+  const [turnosData] = useState(["Diurno", "Noturno"])
+  const [tiposServicoData] = useState(["Coleta", "Seletiva", "Varição", "Remoção"]) // Changed from tiposFrotaData to tiposServicoData
+
+  // Atualiza os setores disponíveis com base no tipo de serviço, turno, frequência e garagem
+  useEffect(() => {
+    if (tipoServico === "Coleta" && turno && frequencia && garagem) {
+      // Obter os setores disponíveis com base nas regras de negócio para Coleta
+      const setoresDisponiveis = SolturaService.getRotasDisponiveis(tipoServico, turno, frequencia, garagem)
+      setSetoresData(setoresDisponiveis)
+
+      // Limpa o setor selecionado se não estiver mais disponível
+      if (setor && !setoresDisponiveis.includes(setor)) {
+        setSetor("")
+      }
+    } else if (tipoServico === "Coleta") {
+      // Se é coleta mas faltam parâmetros, limpa os setores
+      setSetoresData([])
+      setSetor("")
+    } else if (tipoServico === "Seletiva" || tipoServico === "Varição") {
+      // Para Seletiva e Varição, carrega todos os setores disponíveis sem filtrar
+      try {
+        // Usar os setores originais da API sem aplicar regras de filtro
+        const outrosDados = SolturaService.getOutrosDados()
+        setSetoresData(outrosDados.setores || [])
+      } catch (error) {
+        console.error("Erro ao carregar setores para Seletiva/Varição:", error)
+        setSetoresData([])
+      }
+    }
+  }, [tipoServico, turno, frequencia, garagem])
+
+  // Update rota when garagem or setor changes
+  useEffect(() => {
+    if (garagem && setor) {
+      setRota(`${garagem}${setor}`)
+    } else {
+      setRota("")
+    }
+  }, [garagem, setor])
+
+  // Limpa campos quando o tipo de serviço muda
+  useEffect(() => {
+    if (tipoServico === "Remoção") {
+      setSetor("")
+      setFrequencia("")
+      setGaragem("")
+    } else if (tipoServico !== "Coleta" && tipoServico !== "Seletiva" && tipoServico !== "Varição") {
+      setGaragem("")
+      setSetor("")
+    }
+  }, [tipoServico])
 
   // Carregar dados da API usando as URLs específicas
   useEffect(() => {
@@ -1720,8 +2056,8 @@ const Formulario = ({ navigation }) => {
 
         // Definir outros dados
         setFrequenciasData(outrosDados.frequencias)
-        setSetoresData(outrosDados.setores)
-        setLideresData(outrosDados.lideres)
+        setGaragensData(outrosDados.garagens || ["PA1", "PA2", "PA3", "PA4"])
+        setLideresData(outrosDados.lideres || [])
 
         console.log("Carregamento de dados concluído com sucesso")
       } catch (error) {
@@ -1756,8 +2092,16 @@ const Formulario = ({ navigation }) => {
     if (!motorista) newErrors.motorista = "Motorista é obrigatório"
     if (!prefixo) newErrors.prefixo = "Prefixo é obrigatório"
     if (!dataHora) newErrors.dataHora = "Data e hora são obrigatórios"
-    if (!frequencia) newErrors.frequencia = "Frequência é obrigatória"
-    if (!setor) newErrors.setor = "Setor é obrigatório"
+    if (!turno) newErrors.turno = "Turno é obrigatório"
+    if (!tipoServico) newErrors.tipoServico = "Tipo de Serviço é obrigatório"
+
+    // Validações específicas para cada tipo de serviço
+    if (tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição") {
+      if (!frequencia) newErrors.frequencia = "Frequência é obrigatória"
+      if (!garagem) newErrors.garagem = "Garagem é obrigatória"
+      if (!setor) newErrors.setor = "Setor é obrigatório"
+    }
+
     if (coletores.length === 0) newErrors.coletores = "Adicione pelo menos um coletor"
 
     if (!celular) {
@@ -1766,14 +2110,11 @@ const Formulario = ({ navigation }) => {
       newErrors.celular = "Celular inválido"
     }
 
-    if (!lider) newErrors.lider = "Líder é obrigatório"
+    if (lideres.length === 0) newErrors.lideres = "Adicione pelo menos um líder"
 
     // Validação para os novos campos
     if (!horaEntregaChave) newErrors.horaEntregaChave = "Hora de entrega da chave é obrigatória"
     if (!horaSaidaFrota) newErrors.horaSaidaFrota = "Hora de saída da frota é obrigatória"
-
-    if (!turno) newErrors.turno = "Turno é obrigatório"
-    if (!tipo_coleta) newErrors.tipo_coleta = "Tipo de Frota é obrigatório"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -1785,15 +2126,16 @@ const Formulario = ({ navigation }) => {
     setDataHora(new Date())
     setFrequencia("")
     setSetor("")
+    setGaragem("")
+    setRota("") // Add this line
     setColetores([])
     setCelular("")
-    setLider("")
+    setLideres([]) // Reset lideres array
     setHoraEntregaChave(null)
     setHoraSaidaFrota(null)
     setErrors({})
-
     setTurno("")
-    setTipoColeta("") // Changed from setTipoFrota to setTipoColeta
+    setTipoServico("")
   }
 
   const handleSubmit = () => {
@@ -1804,16 +2146,18 @@ const Formulario = ({ navigation }) => {
         prefixo,
         dataHora,
         frequencia,
+        garagem,
         setor,
+        rota, // Add rota here
         coletores,
         celular,
-        lider,
+        lideres, // Changed from lider to lideres
         horaEntregaChave,
         horaSaidaFrota,
         turno,
-        tipoFrota: tipo_coleta, // Display the tipo_coleta value as tipoFrota in the modal
+        tipoServico,
       }
-      
+
       setFormData(formDataToConfirm)
       setShowConfirmationModal(true)
     }
@@ -1831,16 +2175,18 @@ const Formulario = ({ navigation }) => {
         motorista: motorista,
         prefixo: prefixo,
         coletores: coletores,
-        frequencia: frequencia,
-        setor: setor,
+        frequencia: tipoServico === "Remoção" ? "N/A" : frequencia,
+        setor: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? setor : "N/A",
+        garagem: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? garagem : "N/A",
+        rota: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? rota : "N/A", // Add rota here
         celular: celular,
-        lider: lider,
+        lideres: lideres,
         hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
         hora_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
         turno: turno,
-        tipo_coleta: tipo_coleta, // Changed from tipoFrota to tipo_coleta
-        nome_lider: lider, // Usando o campo lider como nome_lider
-        telefone_lider: celular, // Usando o campo celular como telefone_lider
+        tipo_servico: tipoServico,
+        nome_lideres: lideres,
+        telefone_lider: celular,
       }
 
       // Enviar para a API
@@ -1854,9 +2200,7 @@ const Formulario = ({ navigation }) => {
       resetForm()
     } catch (error) {
       console.error("Erro ao enviar formulário:", error)
-      Alert.alert("Erro", error.message || "Ocorreu um erro ao registrar a soltura. Tente novamente.", [
-        { text: "OK" },
-      ])
+      Alert.alert("Erro", error.message || "Ocorreu um erro ao registrar a soltura. Tente novamente.", [{ text: "OK" }])
     } finally {
       setIsSubmitting(false)
     }
@@ -1894,243 +2238,6 @@ const Formulario = ({ navigation }) => {
           <Text style={styles.retryButtonText}>Tentar novamente</Text>
         </Pressable>
       </SafeAreaView>
-    )
-  }
-
-  const getFormLayout = () => {
-    if (isTablet && isLandscape) {
-      return (
-        <View style={styles.twoColumnLayout}>
-          <View style={styles.column}>
-            <Autocomplete
-              data={motoristasData}
-              value={motorista}
-              onChangeText={setMotorista}
-              onSelect={setMotorista}
-              placeholder="Selecione o motorista"
-              label="Motorista"
-              error={errors.motorista}
-              zIndex={8}
-              id="motorista"
-            />
-
-            <Autocomplete
-              data={veiculosData}
-              value={prefixo}
-              onChangeText={setPrefixo}
-              onSelect={setPrefixo}
-              placeholder="Selecione o prefixo do veículo"
-              label="Prefixo do Veículo"
-              error={errors.prefixo}
-              zIndex={7}
-              id="prefixo"
-            />
-
-            <DateTimeSelector date={dataHora} setDate={setDataHora} label="Data e Hora" error={errors.dataHora} />
-
-            <TimeSelector
-              time={horaEntregaChave}
-              setTime={setHoraEntregaChave}
-              label="Hora de Entrega da Chave"
-              error={errors.horaEntregaChave}
-            />
-
-            <Autocomplete
-              data={turnosData}
-              value={turno}
-              onChangeText={setTurno}
-              onSelect={setTurno}
-              placeholder="Selecione o turno"
-              label="Turno"
-              error={errors.turno}
-              zIndex={5}
-              id="turno"
-            />
-
-            <Autocomplete
-              data={frequenciasData}
-              value={frequencia}
-              onChangeText={setFrequencia}
-              onSelect={setFrequencia}
-              placeholder="Selecione a frequência"
-              label="Frequência"
-              error={errors.frequencia}
-              zIndex={6}
-              id="frequencia"
-            />
-          </View>
-
-          <View style={styles.column}>
-            <Autocomplete
-              data={setoresData}
-              value={setor}
-              onChangeText={setSetor}
-              onSelect={setSetor}
-              placeholder="Selecione o setor"
-              label="Setor"
-              error={errors.setor}
-              zIndex={8}
-              id="setor"
-            />
-
-            <TimeSelector
-              time={horaSaidaFrota}
-              setTime={setHoraSaidaFrota}
-              label="Hora de Saída da Frota"
-              error={errors.horaSaidaFrota}
-            />
-
-            <Autocomplete
-              data={tiposFrotaData}
-              value={tipo_coleta}
-              onChangeText={setTipoColeta}
-              onSelect={setTipoColeta}
-              placeholder="Selecione o tipo de frota"
-              label="Tipo de Frota"
-              error={errors.tipo_coleta}
-              zIndex={4}
-              id="tipoFrota"
-            />
-
-            <ColetoresSelector
-              coletores={coletores}
-              setColetores={setColetores}
-              availableColetores={coletoresData}
-              maxColetores={3}
-              label="Coletores (máx. 3)"
-              error={errors.coletores}
-            />
-
-            <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
-
-            <Autocomplete
-              data={lideresData}
-              value={lider}
-              onChangeText={setLider}
-              onSelect={setLider}
-              placeholder="Selecione o líder"
-              label="Líder"
-              error={errors.lider}
-              zIndex={7}
-              id="lider"
-            />
-          </View>
-        </View>
-      )
-    }
-    return (
-      <>
-        <Autocomplete
-          data={motoristasData}
-          value={motorista}
-          onChangeText={setMotorista}
-          onSelect={setMotorista}
-          placeholder="Selecione o motorista"
-          label="Motorista"
-          error={errors.motorista}
-          zIndex={8}
-          id="motorista"
-        />
-
-        <Autocomplete
-          data={veiculosData}
-          value={prefixo}
-          onChangeText={setPrefixo}
-          onSelect={setPrefixo}
-          placeholder="Selecione o prefixo do veículo"
-          label="Prefixo do Veículo"
-          error={errors.prefixo}
-          zIndex={7}
-          id="prefixo"
-        />
-
-        <DateTimeSelector date={dataHora} setDate={setDataHora} label="Data e Hora" error={errors.dataHora} />
-
-        <TimeSelector
-          time={horaEntregaChave}
-          setTime={setHoraEntregaChave}
-          label="Hora de Entrega da Chave"
-          error={errors.horaEntregaChave}
-        />
-
-        <TimeSelector
-          time={horaSaidaFrota}
-          setTime={setHoraSaidaFrota}
-          label="Hora de Saída da Frota"
-          error={errors.horaSaidaFrota}
-        />
-
-        <Autocomplete
-          data={turnosData}
-          value={turno}
-          onChangeText={setTurno}
-          onSelect={setTurno}
-          placeholder="Selecione o turno"
-          label="Turno"
-          error={errors.turno}
-          zIndex={6}
-          id="turno"
-        />
-
-        <Autocomplete
-          data={tiposFrotaData}
-          value={tipo_coleta}
-          onChangeText={setTipoColeta}
-          onSelect={setTipoColeta}
-          placeholder="Selecione o tipo de frota"
-          label="Tipo de Frota"
-          error={errors.tipo_coleta}
-          zIndex={5}
-          id="tipoFrota"
-        />
-
-        <Autocomplete
-          data={frequenciasData}
-          value={frequencia}
-          onChangeText={setFrequencia}
-          onSelect={setFrequencia}
-          placeholder="Selecione a frequência"
-          label="Frequência"
-          error={errors.frequencia}
-          zIndex={7}
-          id="frequencia"
-        />
-
-        <Autocomplete
-          data={setoresData}
-          value={setor}
-          onChangeText={setSetor}
-          onSelect={setSetor}
-          placeholder="Selecione o setor"
-          label="Setor"
-          error={errors.setor}
-          zIndex={4}
-          id="setor"
-        />
-
-        <ColetoresSelector
-          coletores={coletores}
-          setColetores={setColetores}
-          availableColetores={coletoresData}
-          maxColetores={3}
-          label="Coletores (máx. 3)"
-          error={errors.coletores}
-        />
-
-        <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
-
-        <Autocomplete
-          data={lideresData}
-          value={lider}
-          onChangeText={setLider}
-          onSelect={setLider}
-          placeholder="Selecione o líder"
-          label="Líder"
-          error={errors.lider}
-          zIndex={4}
-          id="lider"
-        />
-      </>
     )
   }
 
@@ -2198,7 +2305,357 @@ const Formulario = ({ navigation }) => {
                 },
               ]}
             >
-              {getFormLayout()}
+              {isTablet && isLandscape ? (
+                <View style={styles.twoColumnLayout}>
+                  <View style={styles.column}>
+                    <Autocomplete
+                      data={motoristasData}
+                      value={motorista}
+                      onChangeText={setMotorista}
+                      onSelect={setMotorista}
+                      placeholder="Selecione o motorista"
+                      label="Motorista"
+                      error={errors.motorista}
+                      zIndex={8}
+                      id="motorista"
+                    />
+
+                    <Autocomplete
+                      data={veiculosData}
+                      value={prefixo}
+                      onChangeText={setPrefixo}
+                      onSelect={setPrefixo}
+                      placeholder="Selecione o prefixo do veículo"
+                      label="Prefixo do Veículo"
+                      error={errors.prefixo}
+                      zIndex={7}
+                      id="prefixo"
+                    />
+
+                    <DateTimeSelector
+                      date={dataHora}
+                      setDate={setDataHora}
+                      label="Data e Hora"
+                      error={errors.dataHora}
+                    />
+
+                    <TimeSelector
+                      time={horaEntregaChave}
+                      setTime={setHoraEntregaChave}
+                      label="Hora de Entrega da Chave"
+                      error={errors.horaEntregaChave}
+                    />
+
+                    <TimeSelector
+                      time={horaSaidaFrota}
+                      setTime={setHoraSaidaFrota}
+                      label="Hora de Saída da Frota"
+                      error={errors.horaSaidaFrota}
+                    />
+
+                    <Autocomplete
+                      data={turnosData}
+                      value={turno}
+                      onChangeText={setTurno}
+                      onSelect={setTurno}
+                      placeholder="Selecione o turno"
+                      label="Turno"
+                      error={errors.turno}
+                      zIndex={5}
+                      id="turno"
+                    />
+                  </View>
+
+                  <View style={styles.column}>
+                    <CheckboxGroup
+                      options={tiposServicoData}
+                      value={tipoServico}
+                      onChange={setTipoServico}
+                      label="Tipo de Serviço"
+                      error={errors.tipoServico}
+                    />
+
+                    <Autocomplete
+                      data={frequenciasData}
+                      value={frequencia}
+                      onChangeText={setFrequencia}
+                      onSelect={setFrequencia}
+                      placeholder="Selecione a frequência"
+                      label="Frequência"
+                      error={errors.frequencia}
+                      zIndex={6}
+                      id="frequencia"
+                      disabled={tipoServico === "Remoção"}
+                    />
+
+                    <Autocomplete
+                      data={garagensData}
+                      value={garagem}
+                      onChangeText={setGaragem}
+                      onSelect={setGaragem}
+                      placeholder="Selecione a garagem"
+                      label="Garagem"
+                      error={errors.garagem}
+                      zIndex={8}
+                      id="garagem"
+                      disabled={tipoServico === "Remoção"}
+                    />
+
+                    <Autocomplete
+                      data={setoresData}
+                      value={setor}
+                      onChangeText={setSetor}
+                      onSelect={setSetor}
+                      placeholder="Selecione o setor"
+                      label="Setor"
+                      error={errors.setor}
+                      zIndex={7}
+                      id="setor"
+                      disabled={
+                        tipoServico === "Remoção" || (tipoServico === "Coleta" && (!garagem || !turno || !frequencia))
+                      }
+                    />
+
+                    {/* Rota field - automatically generated */}
+                    <View style={styles.inputWrapper}>
+                      <Animated.Text
+                        style={{
+                          position: "absolute",
+                          left: 15,
+                          top: -8,
+                          fontSize: 12,
+                          color: "#4CAF50",
+                          backgroundColor: "white",
+                          paddingHorizontal: 4,
+                          zIndex: 1,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Rota
+                      </Animated.Text>
+                      <Animated.View
+                        style={[
+                          styles.animatedInputContainer,
+                          {
+                            borderColor: "#ddd",
+                            borderWidth: 1.5,
+                            height: getInputHeight(),
+                            backgroundColor: "#f9f9f9",
+                          },
+                        ]}
+                      >
+                        <TextInput
+                          style={[styles.animatedInput, { fontSize: 16 }]}
+                          value={rota}
+                          editable={false}
+                          placeholder=""
+                        />
+                      </Animated.View>
+                    </View>
+
+                    <ColetoresSelector
+                      coletores={coletores}
+                      setColetores={setColetores}
+                      availableColetores={coletoresData}
+                      maxColetores={3}
+                      label="Coletores (máx. 3)"
+                      error={errors.coletores}
+                    />
+
+                    <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
+
+                    <LideresSelector
+                      lideres={lideres}
+                      setLideres={setLideres}
+                      availableLideres={lideresData}
+                      maxLideres={2}
+                      label="Líderes (máx. 2)"
+                      error={errors.lideres}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>Informações do Veículo</Text>
+
+                    <Autocomplete
+                      data={motoristasData}
+                      value={motorista}
+                      onChangeText={setMotorista}
+                      onSelect={setMotorista}
+                      placeholder="Selecione o motorista"
+                      label="Motorista"
+                      error={errors.motorista}
+                      zIndex={10}
+                      id="motorista"
+                    />
+
+                    <Autocomplete
+                      data={veiculosData}
+                      value={prefixo}
+                      onChangeText={setPrefixo}
+                      onSelect={setPrefixo}
+                      placeholder="Selecione o prefixo do veículo"
+                      label="Prefixo do Veículo"
+                      error={errors.prefixo}
+                      zIndex={9}
+                      id="prefixo"
+                    />
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>Horários</Text>
+
+                    <DateTimeSelector
+                      date={dataHora}
+                      setDate={setDataHora}
+                      label="Data e Hora"
+                      error={errors.dataHora}
+                    />
+
+                    <TimeSelector
+                      time={horaEntregaChave}
+                      setTime={setHoraEntregaChave}
+                      label="Hora de Entrega da Chave"
+                      error={errors.horaEntregaChave}
+                    />
+
+                    <TimeSelector
+                      time={horaSaidaFrota}
+                      setTime={setHoraSaidaFrota}
+                      label="Hora de Saída da Frota"
+                      error={errors.horaSaidaFrota}
+                    />
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>Detalhes do Serviço</Text>
+
+                    <Autocomplete
+                      data={turnosData}
+                      value={turno}
+                      onChangeText={setTurno}
+                      onSelect={setTurno}
+                      placeholder="Selecione o turno"
+                      label="Turno"
+                      error={errors.turno}
+                      zIndex={8}
+                      id="turno"
+                    />
+
+                    <CheckboxGroup
+                      options={tiposServicoData}
+                      value={tipoServico}
+                      onChange={setTipoServico}
+                      label="Tipo de Serviço"
+                      error={errors.tipoServico}
+                    />
+
+                    <Autocomplete
+                      data={frequenciasData}
+                      value={frequencia}
+                      onChangeText={setFrequencia}
+                      onSelect={setFrequencia}
+                      placeholder="Selecione a frequência"
+                      label="Frequência"
+                      error={errors.frequencia}
+                      zIndex={7}
+                      id="frequencia"
+                      disabled={tipoServico === "Remoção"}
+                    />
+
+                    <Autocomplete
+                      data={garagensData}
+                      value={garagem}
+                      onChangeText={setGaragem}
+                      onSelect={setGaragem}
+                      placeholder="Selecione a garagem"
+                      label="Garagem"
+                      error={errors.garagem}
+                      zIndex={6}
+                      id="garagem"
+                      disabled={tipoServico === "Remoção"}
+                    />
+
+                    <Autocomplete
+                      data={setoresData}
+                      value={setor}
+                      onChangeText={setSetor}
+                      onSelect={setSetor}
+                      placeholder="Selecione o setor"
+                      label="Setor"
+                      error={errors.setor}
+                      zIndex={5}
+                      id="setor"
+                      disabled={
+                        tipoServico === "Remoção" || (tipoServico === "Coleta" && (!garagem || !turno || !frequencia))
+                      }
+                    />
+
+                    {/* Rota field - automatically generated */}
+                    <View style={styles.inputWrapper}>
+                      <Animated.Text
+                        style={{
+                          position: "absolute",
+                          left: 15,
+                          top: -8,
+                          fontSize: 12,
+                          color: "#4CAF50",
+                          backgroundColor: "white",
+                          paddingHorizontal: 4,
+                          zIndex: 1,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Rota
+                      </Animated.Text>
+                      <Animated.View
+                        style={[
+                          styles.animatedInputContainer,
+                          {
+                            borderColor: "#ddd",
+                            borderWidth: 1.5,
+                            height: getInputHeight(),
+                            backgroundColor: "#f9f9f9",
+                          },
+                        ]}
+                      >
+                        <TextInput
+                          style={[styles.animatedInput, { fontSize: 16 }]}
+                          value={rota}
+                          editable={false}
+                          placeholder=""
+                        />
+                      </Animated.View>
+                    </View>
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>Equipe</Text>
+
+                    <ColetoresSelector
+                      coletores={coletores}
+                      setColetores={setColetores}
+                      availableColetores={coletoresData}
+                      maxColetores={3}
+                      label="Coletores (máx. 3)"
+                      error={errors.coletores}
+                    />
+
+                    <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
+
+                    <LideresSelector
+                      lideres={lideres}
+                      setLideres={setLideres}
+                      availableLideres={lideresData}
+                      maxLideres={2}
+                      label="Líderes (máx. 2)"
+                      error={errors.lideres}
+                    />
+                  </View>
+                </>
+              )}
 
               {/* Botão de Histórico de Soltura de Rotas - Estilo atualizado */}
               <TouchableArea
@@ -2243,19 +2700,16 @@ const Formulario = ({ navigation }) => {
         </KeyboardAvoidingView>
 
         {/* Modal de confirmação antes de enviar */}
-        <SolturaInfoModal 
-          visible={showConfirmationModal} 
-          onClose={() => setShowConfirmationModal(false)} 
+        <SolturaInfoModal
+          visible={showConfirmationModal}
+          onClose={() => setShowConfirmationModal(false)}
           formData={formData}
           onConfirm={handleConfirmSubmit}
           isConfirmation={true}
         />
 
         {/* Mensagem de sucesso estilizada */}
-        <SuccessMessage 
-          visible={showSuccessMessage} 
-          onClose={() => setShowSuccessMessage(false)} 
-        />
+        <SuccessMessage visible={showSuccessMessage} onClose={() => setShowSuccessMessage(false)} />
 
         {/* Tela de carregamento do histórico */}
         <HistoryLoadingScreen visible={showHistoryLoading} onClose={() => setShowHistoryLoading(false)} />
@@ -2531,7 +2985,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F44336",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.15)",
+    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
     elevation: 2,
   },
   removeButtonText: {
@@ -2635,6 +3089,7 @@ const styles = StyleSheet.create({
     height: 2,
     width: 50,
     backgroundColor: "#4CAF50",
+    marginTop: 8,
     borderRadius: 1,
   },
   solturaContent: {
@@ -2811,100 +3266,104 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  // Estilos para a tela de carregamento do histórico
+
+  // Loading screen styles
   loadingOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10000,
   },
   loadingContainer: {
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 30,
     width: "85%",
     maxWidth: 400,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 10,
   },
   loadingTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#4CAF50",
-    marginBottom: 5,
-    textAlign: "center",
+    marginBottom: 8,
   },
   loadingTitleUnderline: {
-    height: 2,
+    height: 3,
     width: 50,
     backgroundColor: "#4CAF50",
-    borderRadius: 1,
+    borderRadius: 1.5,
     marginBottom: 20,
   },
   spinnerContainer: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f0f0f0",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
+    position: "relative",
+    overflow: "hidden",
   },
   spinner: {
     width: 80,
     height: 80,
+    borderWidth: 8,
+    borderColor: "#4CAF50",
+    borderStyle: "solid",
     borderRadius: 40,
-    borderWidth: 4,
-    borderTopColor: "#4CAF50",
-    borderRightColor: "#81C784",
-    borderBottomColor: "#C8E6C9",
-    borderLeftColor: "#388E3C",
+    position: "absolute",
   },
   spinnerInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "white",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
   loadingIcon: {
+    fontSize: 40,
     position: "absolute",
-    fontSize: 30,
   },
   progressBarContainer: {
     width: "100%",
-    height: 8,
+    height: 10,
     backgroundColor: "#f0f0f0",
-    borderRadius: 4,
-    marginBottom: 15,
+    borderRadius: 5,
+    marginBottom: 20,
     overflow: "hidden",
   },
   progressBar: {
     height: "100%",
     backgroundColor: "#4CAF50",
+    borderRadius: 5,
   },
   loadingText: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 25,
     textAlign: "center",
   },
   loadingItemsContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     width: "100%",
   },
   loadingItem: {
-    width: "48%",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 15,
     alignItems: "center",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+    animation: "float 2s infinite alternate",
   },
   loadingItemIcon: {
     fontSize: 24,
@@ -2912,8 +3371,63 @@ const styles = StyleSheet.create({
   },
   loadingItemText: {
     fontSize: 14,
+    color: "#777",
+  },
+  checkboxContainer: {
+    width: "100%",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+  },
+  checkboxOption: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomColor: "#f0f0f0",
+  },
+  checkboxInner: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#ddd",
+    backgroundColor: "white",
+    marginRight: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxSelected: {
+    borderColor: "#4CAF50",
+  },
+  checkboxDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    color: "#333",
+  },
+  checkboxLabelSelected: {
     color: "#4CAF50",
-    fontWeight: "500",
+  },
+  formSection: {
+    marginBottom: 25,
+    width: "100%",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    paddingBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#4CAF50",
+    marginBottom: 15,
+    paddingLeft: 5,
   },
 })
 

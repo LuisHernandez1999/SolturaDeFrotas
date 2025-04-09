@@ -61,8 +61,9 @@ export const SolturaService = {
     try {
       console.log("Buscando outros dados (frequências, setores, líderes)...")
       const mockedResponse = {
-        frequencias: ["Diária", "Semanal", "Mensal"],
-        setores: ["Setor A", "Setor B", "Setor C"],
+        frequencias: ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
+        setores: [], // Setores serão gerados dinamicamente com base nas regras de negócio
+        garagens: ["PA1", "PA2", "PA3", "PA4"],
       }
       console.log("Outros dados recebidos:", mockedResponse)
       return mockedResponse
@@ -75,7 +76,7 @@ export const SolturaService = {
   getTurnos: async () => {
     try {
       console.log("Buscando turnos...")
-      const turnosData = ["Diurno", "Vespertino", "Noturno"]
+      const turnosData = ["Diurno", "Noturno"]
       console.log("Turnos recebidos:", turnosData)
       return turnosData
     } catch (error) {
@@ -86,7 +87,7 @@ export const SolturaService = {
   getTiposFrota: async () => {
     try {
       console.log("Buscando tipos de frota...")
-      const tiposFrotaData = ["Seletiva", "Coleta", "Cata Treco", "Varrição"]
+      const tiposFrotaData = ["Seletiva", "Coleta", "Cata Treco", "Varrição", "Remoção"]
       console.log("Tipos de frota recebidos:", tiposFrotaData)
       return tiposFrotaData
     } catch (error) {
@@ -95,14 +96,106 @@ export const SolturaService = {
     }
   },
 
+  // Substituir a função getRotasDisponiveis existente com a implementação completa da lógica de rotas
+  getRotasDisponiveis: (tipoServico, turno, frequencia, garagem) => {
+    // Check if service type is "Coleta"
+    if (tipoServico !== "Coleta") {
+      return []
+    }
+
+    // Group days by frequency pattern
+    const diasSegundaQuartaSexta = ["Segunda", "Quarta", "Sexta"]
+    const diasTercaQuintaSabado = ["Terça", "Quinta", "Sábado"]
+
+    // Define routes based on shift, frequency pattern, and garage
+    const rotas = {
+      Diurno: {
+        SegundaQuartaSexta: {
+          PA1: [
+            "AD12",
+            "AD13",
+            "AD14",
+            "AD15",
+            "AD16",
+            "AD17",
+            "AD18",
+            "AD19",
+            "AD20",
+            "AD21",
+            "AD22",
+            "AD23",
+            "AD24",
+            "DD11",
+          ],
+          PA2: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22"],
+          PA3: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD23", "AD24"],
+          PA4: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24"],
+        },
+        TercaQuintaSabado: {
+          PA1: [
+            "AD12",
+            "AD13",
+            "AD14",
+            "AD15",
+            "AD16",
+            "AD17",
+            "AD18",
+            "AD19",
+            "AD20",
+            "AD21",
+            "AD22",
+            "AD23",
+            "AD24",
+            "DD11",
+          ],
+          PA2: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24"],
+          PA3: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD23", "AD24"],
+          PA4: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24"],
+        },
+      },
+      Noturno: {
+        SegundaQuartaSexta: {
+          PA1: ["AN09", "AN10", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06", "DN07", "DN08", "AN20"],
+          PA2: ["AN07", "AN08", "AN09", "AN10", "AN11", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06"],
+          PA3: ["DN01", "DN02", "DN03", "DN04", "DN05", "DN06", "DN07", "DN08", "DN09", "DN10", "DN11", "DN12", "AN15"],
+          PA4: ["AN07", "AN08", "AN09", "AN10", "AN11", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06"],
+        },
+        TercaQuintaSabado: {
+          PA1: ["BN09", "BN10", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06", "DN07", "DN08", "BN20"],
+          PA2: ["BN07", "BN08", "BN09", "BN10", "BN11", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06"],
+          PA3: ["DN01", "DN02", "DN03", "DN04", "DN05", "DN06", "DN07", "DN08", "DN09", "DN10", "DN11", "DN12", "BN15"],
+          PA4: ["BN07", "BN08", "BN09", "BN10", "BN11", "DN01", "DN02", "DN03", "DN04", "DN05", "DN06"],
+        },
+      },
+    }
+
+    // Determine frequency pattern
+    let frequencyPattern
+    if (diasSegundaQuartaSexta.includes(frequencia)) {
+      frequencyPattern = "SegundaQuartaSexta"
+    } else if (diasTercaQuintaSabado.includes(frequencia)) {
+      frequencyPattern = "TercaQuintaSabado"
+    } else {
+      return [] // Invalid frequency
+    }
+
+    // Check if all parameters are valid
+    if (!rotas[turno] || !rotas[turno][frequencyPattern] || !rotas[turno][frequencyPattern][garagem]) {
+      return [] // Invalid parameters
+    }
+
+    // Return the appropriate routes
+    return rotas[turno][frequencyPattern][garagem]
+  },
+
   criarSoltura: async (solturaData) => {
     try {
       console.log("Enviando dados de soltura:", solturaData)
 
-      // Verifique se tipo_coleta está presente em solturaData
-      if (!solturaData.tipo_coleta) {
-        console.error("Erro: tipo_coleta não foi fornecido.")
-        throw new Error("O campo tipo_coleta é obrigatório.")
+      // Verifique se tipo_servico está presente em solturaData
+      if (!solturaData.tipo_servico) {
+        console.error("Erro: tipo_servico não foi fornecido.")
+        throw new Error("O campo tipo_servico é obrigatório.")
       }
 
       const response = await axios.post(`${BASE_URL}/soltura/criar/`, {
@@ -113,10 +206,12 @@ export const SolturaService = {
         setor: solturaData.setor,
         hora_entrega_chave: solturaData.hora_entrega_chave,
         hora_saida_frota: solturaData.hora_saida_frota,
-        nome_lider: solturaData.nome_lider || "", // Envia vazio se não houver
+        nome_lider: solturaData.nome_lideres || "", // Envia vazio se não houver
         telefone_lider: solturaData.telefone_lider || "", // Envia vazio se não houver
         turno: solturaData.turno, // Novo campo para turno
-        tipo_coleta: solturaData.tipo_coleta, // Novo campo para tipo de frota
+        tipo_coleta: solturaData.tipo_servico, // Novo campo para tipo de frota
+        garagem: solturaData.garagem || "", // Garagem selecionada
+        rota: solturaData.setor || "", // A rota é o setor selecionado
       })
 
       console.log("Resposta da criação de soltura:", response.data)
