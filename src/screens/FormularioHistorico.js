@@ -1,31 +1,24 @@
 "use client"
 
-import React from "react"
-
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   SafeAreaView,
   StatusBar,
   Dimensions,
-  PixelRatio,
-  Platform,
-  Modal,
-  ScrollView,
   Animated,
-  useWindowDimensions,
-  TextInput,
-  KeyboardAvoidingView,
+  Pressable,
   ActivityIndicator,
+  FlatList,
+  Modal,
+  TouchableOpacity,
 } from "react-native"
-// Add useFocusEffect import
-import { useNavigation, useFocusEffect } from "@react-navigation/native"
+import { SolturaService } from "../api/visualizar"
 
-// Reutilizando as funções de responsividade do formulário
+// Reuse utility functions from formulario.tsx
 const getDeviceType = () => {
   const { width, height } = Dimensions.get("window")
   const screenSize = Math.min(width, height)
@@ -34,6 +27,22 @@ const getDeviceType = () => {
   if (screenSize >= 414) return "largePhone"
   if (screenSize >= 375) return "mediumPhone"
   return "smallPhone"
+}
+
+const useOrientation = () => {
+  const [orientation, setOrientation] = useState(
+    Dimensions.get("window").width > Dimensions.get("window").height ? "LANDSCAPE" : "PORTRAIT",
+  )
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setOrientation(window.width > window.height ? "LANDSCAPE" : "PORTRAIT")
+    })
+
+    return () => subscription?.remove()
+  }, [])
+
+  return orientation
 }
 
 const normalize = (size) => {
@@ -59,12 +68,7 @@ const normalize = (size) => {
   }
 
   const newSize = size * scaleFactor
-
-  if (Platform.OS === "ios") {
-    return Math.round(PixelRatio.roundToNearestPixel(newSize))
-  }
-
-  return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2
+  return Math.round(newSize)
 }
 
 const getResponsiveSize = (size) => {
@@ -85,907 +89,450 @@ const getResponsiveSize = (size) => {
   }
 }
 
-const getButtonHeight = () => {
-  const deviceType = getDeviceType()
-  const { height } = Dimensions.get("window")
-
-  switch (deviceType) {
-    case "tablet":
-      return height * 0.075
-    case "largePhone":
-      return height * 0.07
-    case "mediumPhone":
-      return height * 0.065
-    case "smallPhone":
-      return height * 0.06
-    default:
-      return height * 0.065
-  }
-}
-
-// Função para obter padding responsivo
-const getResponsivePadding = () => {
-  const deviceType = getDeviceType()
-
-  switch (deviceType) {
-    case "tablet":
-      return 24
-    case "largePhone":
-      return 20
-    case "mediumPhone":
-      return 16
-    case "smallPhone":
-      return 12
-    default:
-      return 16
-  }
-}
-
-// Componente para o botão com efeito de ripple
-const RippleButton = ({ onPress, style, textStyle, children, icon }) => {
-  const [rippleAnim] = useState(new Animated.Value(0))
-  const [rippleScale] = useState(new Animated.Value(0))
-
-  const handlePressIn = () => {
-    Animated.parallel([
-      Animated.timing(rippleAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rippleScale, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }
-
-  const handlePressOut = () => {
-    Animated.timing(rippleAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }
-
-  const rippleOpacity = rippleAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.3],
-  })
-
+// Filter Chip Component
+const FilterChip = ({ label, selected, onPress }) => {
   return (
-    <TouchableOpacity
-      style={[styles.rippleButton, style]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={0.9}
-    >
-      <Animated.View
-        style={[
-          styles.rippleEffect,
-          {
-            opacity: rippleOpacity,
-            transform: [{ scale: rippleScale }],
-          },
-        ]}
-      />
-      <View style={styles.buttonContent}>
-        {icon && <View style={styles.buttonIcon}>{icon}</View>}
-        <Text style={[styles.buttonText, textStyle]}>{children}</Text>
-      </View>
-    </TouchableOpacity>
+    <Pressable style={[styles.filterChip, selected && styles.filterChipSelected]} onPress={onPress}>
+      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
+    </Pressable>
   )
 }
 
-// Componente de pesquisa modificado para filtrar apenas ao clicar no ícone
-const SearchInput = ({ value, onChangeText, onSearch, placeholder, style }) => {
-  const [isFocused, setIsFocused] = useState(false)
-  const [inputValue, setInputValue] = useState(value)
-  const inputRef = useRef(null)
-
-  // Atualizar o valor interno quando o valor externo muda
-  useEffect(() => {
-    setInputValue(value)
-  }, [value])
-
-  // Função para lidar com a mudança de texto sem filtrar imediatamente
-  const handleTextChange = (text) => {
-    setInputValue(text)
+// Determinar a cor do badge com base no tipo de serviço
+const getBadgeColor = (tipoServico) => {
+  switch (tipoServico) {
+    case "Coleta":
+      return "#4CAF50" // Verde
+    case "Seletiva":
+      return "#2196F3" // Azul
+    case "Varrição":
+    case "Varrição":
+      return "#FF9800" // Laranja
+    case "Remoção":
+      return "#9C27B0" // Roxo
+    case "Cata Treco":
+      return "#795548" // Marrom
+    default:
+      return "#757575" // Cinza
   }
-
-  // Função para executar a pesquisa quando o ícone é clicado
-  const handleSearch = () => {
-    onSearch(inputValue)
-  }
-
-  return (
-    <View style={[styles.searchContainer, style]}>
-      <View style={[styles.searchInputContainer, isFocused && styles.searchInputContainerFocused]}>
-        <TouchableOpacity onPress={handleSearch} style={styles.searchIconButton}>
-          <Text style={styles.searchIcon}>🔍</Text>
-        </TouchableOpacity>
-        <TextInput
-          ref={inputRef}
-          style={styles.searchInput}
-          value={inputValue}
-          onChangeText={handleTextChange}
-          placeholder={placeholder}
-          placeholderTextColor="#999"
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          clearButtonMode="while-editing"
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-        />
-        {inputValue ? (
-          <TouchableOpacity
-            style={styles.clearSearchButton}
-            onPress={() => {
-              setInputValue("")
-              onSearch("")
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.clearSearchButtonText}>✕</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </View>
-  )
 }
 
-// Componente de seleção de linhas por página
-const RowsPerPageSelector = ({ value, options, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef(null)
+// Format date time helper
+const formatDateTime = (dateString) => {
+  if (!dateString) return "N/A"
 
+  const date = new Date(dateString)
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`
+}
+
+// Get equipe label helper
+const getEquipeLabel = (equipe) => {
+  switch (equipe) {
+    case "matutino":
+      return "Equipe 1 (Matutino)"
+    case "vespertino":
+      return "Equipe 2 (Vespertino)"
+    case "noturno":
+      return "Equipe 3 (Noturno)"
+  }
+}
+
+// SolturaCard Component to display each soltura record
+const SolturaCard = ({ item, onPress }) => {
   return (
-    <View style={styles.rowsPerPageContainer}>
-      <Text style={styles.rowsPerPageLabel}>Linhas por página:</Text>
-      <TouchableOpacity style={styles.rowsPerPageSelector} onPress={() => setIsOpen(!isOpen)} ref={dropdownRef}>
-        <Text style={styles.rowsPerPageValue}>{value}</Text>
-        <Text style={styles.rowsPerPageArrow}>{isOpen ? "▲" : "▼"}</Text>
-      </TouchableOpacity>
-
-      {isOpen && (
-        <View style={styles.rowsPerPageDropdown}>
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={[styles.rowsPerPageOption, option === value && styles.rowsPerPageOptionSelected]}
-              onPress={() => {
-                onChange(option)
-                setIsOpen(false)
-              }}
-            >
-              <Text style={[styles.rowsPerPageOptionText, option === value && styles.rowsPerPageOptionTextSelected]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <Pressable style={styles.solturaCard} onPress={onPress}>
+      <View style={styles.solturaCardHeader}>
+        <View style={styles.solturaCardHeaderLeft}>
+          <Text style={styles.solturaCardTitle}>{item.veiculo || "Sem veículo"}</Text>
+          <Text style={styles.solturaCardSubtitle}>{item.motorista || "Sem motorista"}</Text>
         </View>
-      )}
-    </View>
-  )
-}
-
-// Modify the Autocomplete component to fix the issue with typing and selecting collaborators
-const Autocomplete = ({ options, value, onChangeText, onSelect, placeholder, style, id }) => {
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [isFocused, setIsFocused] = useState(false)
-  const inputRef = useRef(null)
-
-  // Generate a unique ID for this autocomplete instance if not provided
-  const autocompleteId = useRef(id || `autocomplete-${Math.random().toString(36).substr(2, 9)}`).current
-
-  // Simple filtered options - no state to avoid re-renders
-  const getFilteredOptions = () => {
-    if (value.trim() === "") {
-      return options
-    }
-    return options.filter((option) => option.toLowerCase().includes(value.toLowerCase()))
-  }
-
-  const handleFocus = () => {
-    setIsFocused(true)
-    setShowDropdown(true)
-  }
-
-  const handleBlur = () => {
-    // Longer delay to allow dropdown item selection
-    setTimeout(() => {
-      setIsFocused(false)
-      setShowDropdown(false)
-    }, 300)
-  }
-
-  const handleTextChange = (text) => {
-    onChangeText(text)
-    // Show dropdown when typing
-    setShowDropdown(true)
-  }
-
-  const handleSelectItem = (item) => {
-    onSelect(item)
-    // Don't close dropdown immediately to prevent flickering
-    setTimeout(() => {
-      setShowDropdown(false)
-      inputRef.current?.blur()
-    }, 100)
-  }
-
-  // Get filtered options only when needed
-  const filteredOptions = showDropdown ? getFilteredOptions() : []
-
-  return (
-    <View style={[styles.autocompleteContainer, style]}>
-      <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={value}
-          onChangeText={handleTextChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          placeholderTextColor="#999"
-        />
-        {value ? (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => {
-              onChangeText("")
-              inputRef.current?.focus()
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        <View style={styles.solturaCardHeaderRight}>
+          <View
+            style={[
+              styles.solturaCardBadge,
+              {
+                backgroundColor: getBadgeColor(item.tipo_servico),
+              },
+            ]}
           >
-            <Text style={styles.clearButtonText}>✕</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.dropdownIconButton}
-            onPress={() => {
-              if (showDropdown) {
-                setShowDropdown(false)
-              } else {
-                inputRef.current?.focus()
-              }
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.dropdownIcon}>▼</Text>
-          </TouchableOpacity>
+            <Text style={styles.solturaCardBadgeText}>{item.tipo_servico || "N/A"}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.solturaCardContent}>
+        <View style={styles.solturaCardRow}>
+          <Text style={styles.solturaCardLabel}>Data:</Text>
+          <Text style={styles.solturaCardValue}>{formatDateTime(item.data_soltura)}</Text>
+        </View>
+
+        <View style={styles.solturaCardRow}>
+          <Text style={styles.solturaCardLabel}>Turno:</Text>
+          <Text style={styles.solturaCardValue}>{item.turno || "N/A"}</Text>
+        </View>
+
+        {item.garagem && (
+          <View style={styles.solturaCardRow}>
+            <Text style={styles.solturaCardLabel}>Garagem:</Text>
+            <Text style={styles.solturaCardValue}>{item.garagem}</Text>
+          </View>
+        )}
+
+        {item.setor && (
+          <View style={styles.solturaCardRow}>
+            <Text style={styles.solturaCardLabel}>Setor:</Text>
+            <Text style={styles.solturaCardValue}>{item.setor}</Text>
+          </View>
         )}
       </View>
 
-      {showDropdown && filteredOptions.length > 0 && (
-        <View style={styles.dropdownList}>
-          <ScrollView nestedScrollEnabled={true} style={styles.dropdownScroll} keyboardShouldPersistTaps="always">
-            {filteredOptions.map((item, index) => (
-              <TouchableOpacity
-                key={`${autocompleteId}-${index}`}
-                style={[styles.dropdownItem, { paddingVertical: 12 }]}
-                onPress={() => handleSelectItem(item)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownItemText, item === value && styles.dropdownItemTextSelected]}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-    </View>
+      <View style={styles.viewMoreContainer}>
+        <Text style={styles.viewMoreText}>Toque para ver detalhes</Text>
+      </View>
+    </Pressable>
   )
 }
 
-// Modify the RotaDetailModal component to remove edit functionality
-const RotaDetailModal = ({ isVisible, rota, onClose }) => {
-  const [fadeAnim] = useState(new Animated.Value(0))
-  const [scaleAnim] = useState(new Animated.Value(0.9))
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-  const isSmallScreen = screenWidth < 360
-  const padding = getResponsivePadding()
+// Modal de detalhes da soltura
+const SolturaDetailModal = ({ visible, item, onClose }) => {
+  const scaleAnim = useRef(new Animated.Value(0.9)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    if (isVisible) {
+    if (visible) {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
         Animated.spring(scaleAnim, {
           toValue: 1,
           friction: 8,
           tension: 40,
           useNativeDriver: true,
         }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
       ]).start()
-    } else {
-      Animated.timing(fadeAnim, {
+    }
+  }, [visible])
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
-      }).start()
-    }
-  }, [isVisible])
+      }),
+    ]).start(() => {
+      onClose()
+    })
+  }
 
-  if (!rota) return null
-
-  // Calcular altura máxima do modal com base na altura da tela
-  const maxModalHeight = screenHeight * 0.8
-
-  // Calculate modal width based on screen size
-  const modalWidth = screenWidth > 500 ? 500 : screenWidth * 0.92
+  if (!visible || !item) return null
 
   return (
-    <Modal
-      visible={isVisible}
-      transparent={true}
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent={true}
-      hardwareAccelerated={true}
-    >
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalKeyboardAvoid}>
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            style={[
-              styles.modalContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
-                width: modalWidth,
-                maxHeight: maxModalHeight,
-              },
-            ]}
-          >
-            <View style={styles.modalHeaderGradient}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, isSmallScreen && { fontSize: normalize(16) }]}>
-                  Detalhes da Soltura
-                </Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={onClose}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                >
-                  <Text style={styles.closeButtonText}>✕</Text>
-                </TouchableOpacity>
+    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+      <View style={styles.modalOverlay}>
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderContent}>
+              <Text style={styles.modalTitle}>Detalhes da Soltura</Text>
+              <View
+                style={[
+                  styles.modalBadge,
+                  {
+                    backgroundColor: getBadgeColor(item.tipo_servico),
+                  },
+                ]}
+              >
+                <Text style={styles.modalBadgeText}>{item.tipo_servico || "N/A"}</Text>
               </View>
             </View>
+            <View style={styles.modalHeaderUnderline} />
+          </View>
 
-            <ScrollView
-              style={[styles.modalContent, { maxHeight: maxModalHeight * 0.7 }]}
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={[styles.modalContentContainer, { padding: padding }]}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.modalSection}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Data:</Text>
-                  <Text style={styles.detailValue}>{rota.data}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Hora:</Text>
-                  <Text style={styles.detailValue}>{rota.hora}</Text>
-                </View>
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Informações Gerais</Text>
+
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Veículo:</Text>
+                <Text style={styles.modalValue}>{item.veiculo || "N/A"}</Text>
               </View>
 
-              <View style={styles.modalSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Informações do Veículo</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Motorista:</Text>
-                  <Text style={styles.detailValue}>{rota.motorista}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Prefixo:</Text>
-                  <Text style={styles.detailValue}>{rota.prefixo}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Setor:</Text>
-                  <Text style={styles.detailValue}>{rota.setor}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Frequência:</Text>
-                  <Text style={styles.detailValue}>{rota.frequencia || "Diária"}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Tipo:</Text>
-                  <Text style={styles.detailValue}>{rota.tipo || "Não informado"}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Turno:</Text>
-                  <Text style={styles.detailValue}>{rota.turno || "Não informado"}</Text>
-                </View>
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Motorista:</Text>
+                <Text style={styles.modalValue}>{item.motorista || "N/A"}</Text>
               </View>
 
-              <View style={styles.modalSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Equipe</Text>
-                </View>
-
-                <View style={styles.coletoresList}>
-                  {rota.coletores.map((coletor, index) => (
-                    <View key={index} style={styles.coletorItem}>
-                      <Text style={styles.coletorText}>{coletor}</Text>
-                    </View>
-                  ))}
-                </View>
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Data:</Text>
+                <Text style={styles.modalValue}>{formatDateTime(item.data_soltura)}</Text>
               </View>
 
-              <View style={styles.modalSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Contato</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Celular:</Text>
-                  <Text style={styles.detailValue}>{rota.celular || "(XX) XXXXX-XXXX"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Líder:</Text>
-                  <Text style={styles.detailValue}>{rota.lider || "Não informado"}</Text>
-                </View>
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Turno:</Text>
+                <Text style={styles.modalValue}>{item.turno || "N/A"}</Text>
               </View>
 
-              <View style={styles.modalSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Observações</Text>
+              {item.equipe && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Equipe:</Text>
+                  <Text style={styles.modalValue}>{getEquipeLabel(item.equipe)}</Text>
                 </View>
-
-                <View style={styles.observacoesContainer}>
-                  <Text style={styles.observacoesText}>{rota.observacoes || "Nenhuma observação registrada"}</Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={[styles.modalFooter, { padding: padding }]}>
-              <RippleButton style={styles.modalButton} textStyle={styles.modalButtonText} onPress={onClose}>
-                FECHAR
-              </RippleButton>
+              )}
             </View>
-          </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Horários</Text>
+
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Entrega Chave:</Text>
+                <Text style={styles.modalValue}>{item.hora_entrega_chave || "N/A"}</Text>
+              </View>
+
+              {item.hora_saida_frota && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Saída Frota:</Text>
+                  <Text style={styles.modalValue}>{item.hora_saida_frota}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Localização</Text>
+
+              {item.garagem && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Garagem:</Text>
+                  <Text style={styles.modalValue}>{item.garagem}</Text>
+                </View>
+              )}
+
+              {item.setor && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Setor:</Text>
+                  <Text style={styles.modalValue}>{item.setor}</Text>
+                </View>
+              )}
+
+              {item.rotas && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Rota:</Text>
+                  <Text style={styles.modalValue}>{item.rotas}</Text>
+                </View>
+              )}
+
+              {item.frequencia && (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Frequência:</Text>
+                  <Text style={styles.modalValue}>{item.frequencia}</Text>
+                </View>
+              )}
+            </View>
+
+            {item.coletores && item.coletores.length > 0 && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Equipe</Text>
+
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Coletores:</Text>
+                  <Text style={styles.modalValue}>
+                    {Array.isArray(item.coletores) ? item.coletores.join(", ") : item.coletores}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          <TouchableOpacity style={styles.modalCloseButton} onPress={handleClose}>
+            <Text style={styles.modalCloseButtonText}>Fechar</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
     </Modal>
   )
 }
 
-// Modify the HistoricoSoltura component to add search, rows per page, and new columns
-export default function HistoricoSoltura() {
-  const navigation = useNavigation()
-  const [selectedRota, setSelectedRota] = useState(null)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [rotasData, setRotasData] = useState([])
-  const [filteredRotas, setFilteredRotas] = useState([])
+// Main Component
+const FormularioHistorico = ({ navigation }) => {
+  // Remove the header from React Navigation
+  React.useEffect(() => {
+    navigation?.setOptions?.({
+      headerShown: false, // This will hide the header from React Navigation
+    })
+  }, [navigation])
+
+  // State for filters
+  const [tipoServico, setTipoServico] = useState("Todos")
+  const [turno, setTurno] = useState("Todos")
+
+  // State for data
+  const [solturas, setSolturas] = useState([])
+  const [filteredSolturas, setFilteredSolturas] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-  const isSmallScreen = screenWidth < 360
-  const padding = getResponsivePadding()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState(null)
 
-  // Estados para pesquisa e paginação
-  const [searchQuery, setSearchQuery] = useState("")
-  const [tempSearchQuery, setTempSearchQuery] = useState("") // Para armazenar o valor temporário da pesquisa
-  const [rowsPerPage, setRowsPerPage] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const rowsPerPageOptions = [5, 10, 15, 20]
+  // State for modal
+  const [selectedSoltura, setSelectedSoltura] = useState(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
-  // Obter a data atual formatada
-  const getCurrentDate = () => {
-    const today = new Date()
-    const day = String(today.getDate()).padStart(2, "0")
-    const month = String(today.getMonth() + 1).padStart(2, "0")
-    const year = today.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const translateYAnim = useRef(new Animated.Value(50)).current
 
-  // Inicializar dados de exemplo
+  // Filter options
+  const tiposServicoData = ["Todos", "Coleta", "Seletiva", "Varrição", "Remoção"]
+  const turnosData = ["Todos", "Diurno", "Noturno"]
+
+  // Get device dimensions
+  const { width } = Dimensions.get("window")
+  const orientation = useOrientation()
+  const isLandscape = orientation === "LANDSCAPE"
+  const deviceType = getDeviceType()
+  const isTablet = deviceType === "tablet"
+
+  // Load data on component mount
   useEffect(() => {
-    // Simulate loading data
-    setIsLoading(true)
-
-    setTimeout(() => {
-      const currentDate = getCurrentDate()
-      const initialData = [
-        {
-          id: "1",
-          data: currentDate,
-          hora: "08:30",
-          motorista: "João Silva",
-          prefixo: "ABC-1234",
-          setor: "Norte",
-          coletores: ["Pedro Santos", "Ana Costa"],
-          frequencia: "Diária",
-          celular: "(62) 98765-4321",
-          lider: "Roberto Alves",
-          observacoes: "Rota iniciada sem intercorrências",
-          tipo: "Coleta",
-          turno: "Diurno",
-        },
-        {
-          id: "2",
-          data: currentDate,
-          hora: "09:15",
-          motorista: "Maria Oliveira",
-          prefixo: "DEF-5678",
-          setor: "Sul",
-          coletores: ["Carlos Ferreira"],
-          frequencia: "Semanal",
-          celular: "(62) 91234-5678",
-          lider: "Fernanda Lima",
-          observacoes: "Atraso devido a congestionamento",
-          tipo: "Seletiva",
-          turno: "Vespertino",
-        },
-        {
-          id: "3",
-          data: currentDate,
-          hora: "10:45",
-          motorista: "Pedro Santos",
-          prefixo: "GHI-9012",
-          setor: "Leste",
-          coletores: ["Ana Costa", "João Silva", "Maria Oliveira"],
-          frequencia: "Diária",
-          celular: "(62) 99876-5432",
-          lider: "Marcelo Souza",
-          observacoes: "",
-          tipo: "Cata Treco",
-          turno: "Diurno",
-        },
-        {
-          id: "4",
-          data: currentDate,
-          hora: "11:30",
-          motorista: "Ana Costa",
-          prefixo: "JKL-3456",
-          setor: "Oeste",
-          coletores: ["Carlos Ferreira", "Pedro Santos"],
-          frequencia: "Quinzenal",
-          celular: "(62) 98888-7777",
-          lider: "Juliana Pereira",
-          observacoes: "Veículo precisou de manutenção durante o percurso",
-          tipo: "Varrição",
-          turno: "Noturno",
-        },
-        {
-          id: "5",
-          data: currentDate,
-          hora: "13:00",
-          motorista: "Carlos Ferreira",
-          prefixo: "MNO-7890",
-          setor: "Centro",
-          coletores: ["João Silva"],
-          frequencia: "Diária",
-          celular: "(62) 97777-8888",
-          lider: "Roberto Alves",
-          observacoes: "",
-          tipo: "Coleta",
-          turno: "Vespertino",
-        },
-        {
-          id: "6",
-          data: currentDate,
-          hora: "14:15",
-          motorista: "Fernanda Lima",
-          prefixo: "PQR-1234",
-          setor: "Norte",
-          coletores: ["Marcelo Souza", "Juliana Pereira"],
-          frequencia: "Diária",
-          celular: "(62) 96666-7777",
-          lider: "Carlos Ferreira",
-          observacoes: "Rota concluída antes do previsto",
-          tipo: "Seletiva",
-          turno: "Diurno",
-        },
-        {
-          id: "7",
-          data: currentDate,
-          hora: "15:30",
-          motorista: "Roberto Alves",
-          prefixo: "STU-5678",
-          setor: "Sul",
-          coletores: ["Ana Costa", "Pedro Santos"],
-          frequencia: "Semanal",
-          celular: "(62) 95555-6666",
-          lider: "Maria Oliveira",
-          observacoes: "",
-          tipo: "Cata Treco",
-          turno: "Vespertino",
-        },
-        {
-          id: "8",
-          data: currentDate,
-          hora: "16:45",
-          motorista: "Juliana Pereira",
-          prefixo: "VWX-9012",
-          setor: "Leste",
-          coletores: ["Carlos Ferreira"],
-          frequencia: "Diária",
-          celular: "(62) 94444-5555",
-          lider: "João Silva",
-          observacoes: "Condições climáticas adversas",
-          tipo: "Varrição",
-          turno: "Noturno",
-        },
-        {
-          id: "9",
-          data: currentDate,
-          hora: "17:30",
-          motorista: "Marcelo Souza",
-          prefixo: "YZA-3456",
-          setor: "Oeste",
-          coletores: ["Fernanda Lima", "Roberto Alves"],
-          frequencia: "Quinzenal",
-          celular: "(62) 93333-4444",
-          lider: "Ana Costa",
-          observacoes: "",
-          tipo: "Coleta",
-          turno: "Diurno",
-        },
-        {
-          id: "10",
-          data: currentDate,
-          hora: "18:15",
-          motorista: "João Silva",
-          prefixo: "BCD-7890",
-          setor: "Centro",
-          coletores: ["Juliana Pereira", "Marcelo Souza"],
-          frequencia: "Diária",
-          celular: "(62) 92222-3333",
-          lider: "Pedro Santos",
-          observacoes: "Trânsito intenso na região",
-          tipo: "Seletiva",
-          turno: "Vespertino",
-        },
-        {
-          id: "11",
-          data: currentDate,
-          hora: "19:30",
-          motorista: "Ana Costa",
-          prefixo: "EFG-1234",
-          setor: "Norte",
-          coletores: ["Carlos Ferreira", "Fernanda Lima"],
-          frequencia: "Semanal",
-          celular: "(62) 91111-2222",
-          lider: "Roberto Alves",
-          observacoes: "",
-          tipo: "Cata Treco",
-          turno: "Noturno",
-        },
-        {
-          id: "12",
-          data: currentDate,
-          hora: "20:45",
-          motorista: "Pedro Santos",
-          prefixo: "HIJ-5678",
-          setor: "Sul",
-          coletores: ["Juliana Pereira"],
-          frequencia: "Diária",
-          celular: "(62) 90000-1111",
-          lider: "Marcelo Souza",
-          observacoes: "Equipamento com defeito",
-          tipo: "Varrição",
-          turno: "Diurno",
-        },
-      ]
-      setRotasData(initialData)
-      setFilteredRotas(initialData)
-      setIsLoading(false)
-    }, 1500)
+    fetchSolturas()
   }, [])
 
-  // Função para executar a pesquisa quando o usuário clicar no ícone de pesquisa
-  const handleSearch = (query) => {
-    setSearchQuery(query)
-    if (query.trim() === "") {
-      setFilteredRotas(rotasData)
-      setCurrentPage(1)
-    } else {
-      const lowercaseQuery = query.toLowerCase()
-      const filtered = rotasData.filter(
-        (rota) =>
-          rota.motorista.toLowerCase().includes(lowercaseQuery) ||
-          rota.prefixo.toLowerCase().includes(lowercaseQuery) ||
-          rota.setor.toLowerCase().includes(lowercaseQuery) ||
-          rota.tipo.toLowerCase().includes(lowercaseQuery) ||
-          rota.turno.toLowerCase().includes(lowercaseQuery) ||
-          rota.frequencia.toLowerCase().includes(lowercaseQuery) ||
-          rota.hora.includes(lowercaseQuery),
-      )
-      setFilteredRotas(filtered)
-      setCurrentPage(1)
+  // Apply filters when filter values change
+  useEffect(() => {
+    applyFilters()
+  }, [tipoServico, turno, solturas])
+
+  // Animate component entry
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start()
+  }, [])
+
+  // Fetch soltura data from API
+  const fetchSolturas = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Usar a função getSolturas do SolturaService
+      const response = await SolturaService.getSolturas()
+      console.log("Solturas recebidas:", response)
+      setSolturas(response)
+      setFilteredSolturas(response)
+    } catch (error) {
+      console.error("Erro ao buscar solturas:", error)
+      setError("Falha ao carregar histórico. Verifique sua conexão e tente novamente.")
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
-  // Calcular dados paginados
-  const getPaginatedData = () => {
-    const startIndex = (currentPage - 1) * rowsPerPage
-    const endIndex = startIndex + rowsPerPage
-    return filteredRotas.slice(startIndex, endIndex)
+  // Apply filters to the data
+  const applyFilters = () => {
+    if (!solturas || solturas.length === 0) return
+
+    let filtered = [...solturas]
+
+    // Filter by tipo_servico
+    if (tipoServico && tipoServico !== "Todos") {
+      filtered = filtered.filter((item) => item.tipo_servico === tipoServico)
+    }
+
+    // Filter by turno
+    if (turno && turno !== "Todos") {
+      filtered = filtered.filter((item) => item.turno === turno)
+    }
+
+    setFilteredSolturas(filtered)
   }
 
-  // Calcular total de páginas
-  const totalPages = Math.ceil(filteredRotas.length / rowsPerPage)
+  // Handle refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    fetchSolturas()
+  }
 
-  const openModal = (rota) => {
-    setSelectedRota(rota)
+  // Clear all filters
+  const clearFilters = () => {
+    setTipoServico("Todos")
+    setTurno("Todos")
+  }
+
+  // Navigate back to form
+  const navigateToForm = () => {
+    navigation?.navigate("Formulario")
+  }
+
+  // Open modal with soltura details
+  const openSolturaDetails = (item) => {
+    setSelectedSoltura(item)
     setModalVisible(true)
   }
 
+  // Close modal
   const closeModal = () => {
     setModalVisible(false)
-    setSelectedRota(null)
+    setSelectedSoltura(null)
   }
 
-  // Add useFocusEffect to remove the native header
-  useFocusEffect(
-    React.useCallback(() => {
-      if (navigation && navigation.setOptions) {
-        navigation.setOptions({
-          headerShown: false,
-          header: () => null,
-          title: null,
-        })
-      }
-
-      // Configure StatusBar correctly
-      StatusBar.setBarStyle("dark-content")
-      if (Platform.OS === "android") {
-        StatusBar.setTranslucent(true)
-        StatusBar.setBackgroundColor("transparent")
-        StatusBar.setHidden(false)
-      }
-
-      return () => {
-        // Restore default settings when leaving the screen, if needed
-      }
-    }, [navigation]),
-  )
-
-  // Fix the navigation function
-  const navigateToFormulario = () => {
-    navigation.navigate("Formulario")
-  }
-
-  // Renderização adaptativa para telas pequenas
-  const getTableColumns = () => {
-    if (isSmallScreen) {
-      return [
-        { key: "hora", title: "Hora", flex: 1 },
-        { key: "motorista", title: "Motorista", flex: 2 },
-        { key: "setor", title: "Setor", flex: 1 },
-      ]
+  // Calculate container width based on device
+  const getContainerWidth = () => {
+    if (isTablet) {
+      return isLandscape ? width * 0.9 : width * 0.8
     }
-
-    if (screenWidth < 500) {
-      return [
-        { key: "hora", title: "Hora", flex: 1 },
-        { key: "motorista", title: "Motorista", flex: 2 },
-        { key: "prefixo", title: "Prefixo", flex: 1.5 },
-        { key: "setor", title: "Setor", flex: 1 },
-      ]
-    }
-
-    return [
-      { key: "hora", title: "Hora", flex: 1 },
-      { key: "motorista", title: "Motorista", flex: 2 },
-      { key: "prefixo", title: "Prefixo", flex: 1.5 },
-      { key: "setor", title: "Setor", flex: 1 },
-      { key: "tipo", title: "Tipo", flex: 1.2 },
-      { key: "turno", title: "Turno", flex: 1.2 },
-      { key: "frequencia", title: "Freq.", flex: 1 },
-    ]
+    return isLandscape ? width * 0.8 : width * 0.9
   }
 
-  const renderTableHeader = () => {
-    const columns = getTableColumns()
-
+  // Render loading state
+  if (isLoading && !isRefreshing) {
     return (
-      <View style={styles.tableHeader}>
-        {columns.map((column, index) => (
-          <Text
-            key={index}
-            style={[
-              styles.tableHeaderCell,
-              {
-                flex: column.flex,
-                fontSize: normalize(isSmallScreen ? 12 : 14),
-                paddingHorizontal: isSmallScreen ? 4 : 8,
-              },
-            ]}
-          >
-            {column.title}
-          </Text>
-        ))}
-      </View>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Carregando histórico...</Text>
+      </SafeAreaView>
     )
   }
 
-  const renderTableRow = ({ item, index }) => {
-    const isEven = index % 2 === 0
-    const columns = getTableColumns()
-
+  // Render error state
+  if (error) {
     return (
-      <TouchableOpacity
-        style={[styles.tableRow, isEven ? styles.tableRowEven : styles.tableRowOdd]}
-        onPress={() => openModal(item)}
-        activeOpacity={0.7}
-      >
-        {columns.map((column, colIndex) => (
-          <Text
-            key={colIndex}
-            style={[
-              styles.tableCell,
-              {
-                flex: column.flex,
-                fontSize: normalize(isSmallScreen ? 11 : 13),
-                paddingHorizontal: isSmallScreen ? 4 : 8,
-                ...(column.key === "setor" ? { fontWeight: "500", color: "#8BC34A" } : {}),
-                ...(column.key === "tipo" ? { fontWeight: "500", color: "#5C6BC0" } : {}),
-                ...(column.key === "turno" ? { fontWeight: "500", color: "#FF9800" } : {}),
-              },
-            ]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item[column.key]}
-          </Text>
-        ))}
-      </TouchableOpacity>
-    )
-  }
-
-  // Componente para paginação
-  const Pagination = () => {
-    return (
-      <View style={styles.paginationContainer}>
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          <Text style={styles.paginationButtonText}>←</Text>
-        </TouchableOpacity>
-
-        <View style={styles.paginationInfo}>
-          <Text style={styles.paginationText}>
-            {currentPage} de {totalPages}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-        >
-          <Text style={styles.paginationButtonText}>→</Text>
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  // Calcular altura segura para o conteúdo
-  const safeAreaPadding =
-    Platform.OS === "ios" ? { paddingTop: 50, paddingBottom: 30 } : { paddingTop: 40, paddingBottom: 20 }
-
-  // Render loading screen if data is still loading
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.loadingScreenContainer}>
-        <View style={styles.loadingScreenContent}>
-          <ActivityIndicator size="large" color="#8BC34A" />
-          <Text style={styles.loadingScreenText}>Carregando histórico...</Text>
-        </View>
+      <SafeAreaView style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Erro ao carregar</Text>
+        <Text style={styles.errorMessage}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={fetchSolturas}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </Pressable>
       </SafeAreaView>
     )
   }
@@ -994,686 +541,483 @@ export default function HistoricoSoltura() {
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      <View style={styles.headerContainer}>
-        <View
-          style={[
-            styles.header,
-            {
-              paddingHorizontal: padding,
-              ...safeAreaPadding,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={navigateToFormulario}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <Text style={[styles.backButtonText, isSmallScreen && { fontSize: normalize(22) }]}>←</Text>
-          </TouchableOpacity>
-
-          <View style={styles.titleContainer}>
-            <Text
-              style={[
-                styles.headerTitle,
-                {
-                  fontSize: normalize(isSmallScreen ? 18 : 22),
-                },
-              ]}
-            >
-              Histórico de Soltura de Frota
-            </Text>
-            <View style={styles.titleUnderline} />
-          </View>
-
-          {/* Espaço vazio para equilibrar o cabeçalho */}
-          <View style={{ width: 40 }} />
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Histórico de Soltura</Text>
+        <View style={styles.headerUnderline} />
       </View>
 
-      <View style={[styles.dateContainer, { paddingHorizontal: padding }]}>
-        <Text style={[styles.dateText, isSmallScreen && { fontSize: normalize(12) }]}>Data: {getCurrentDate()}</Text>
-      </View>
-
-      {/* Adicionar campo de pesquisa com espaçamento adequado */}
-      <View style={[styles.searchSection, { paddingHorizontal: padding }]}>
-        <SearchInput
-          value={searchQuery}
-          onChangeText={setTempSearchQuery}
-          onSearch={handleSearch}
-          placeholder="Pesquisar por motorista, prefixo, setor..."
-          style={styles.searchInput}
-        />
-      </View>
-
-      {/* Add a spacer View with significant height */}
-      <View style={{ height: 15 }} />
-
-      <View
+      <Animated.View
         style={[
-          styles.content,
+          styles.contentContainer,
           {
-            padding: padding,
-            paddingTop: 5,
-            paddingBottom: Math.max(padding, 10),
+            width: getContainerWidth(),
+            opacity: fadeAnim,
+            transform: [{ translateY: translateYAnim }],
           },
         ]}
       >
-        <View style={styles.tableContainer}>
-          {renderTableHeader()}
+        <View style={styles.filtersContainer}>
+          <View style={styles.filtersSectionHeader}>
+            <Text style={styles.filtersSectionTitle}>Filtros</Text>
+            <Pressable onPress={clearFilters} style={styles.clearFiltersButton}>
+              <Text style={styles.clearFiltersButtonText}>Limpar filtros</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterSectionTitle}>Tipo de Serviço</Text>
+            <View style={styles.filterChipsVerticalContainer}>
+              {tiposServicoData.map((option) => (
+                <FilterChip
+                  key={option}
+                  label={option}
+                  selected={tipoServico === option}
+                  onPress={() => setTipoServico(option)}
+                />
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterSectionTitle}>Turno</Text>
+            <View style={styles.filterChipsContainer}>
+              {turnosData.map((option) => (
+                <FilterChip key={option} label={option} selected={turno === option} onPress={() => setTurno(option)} />
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.resultsContainer}>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsTitle}>Resultados</Text>
+            <Text style={styles.resultsCount}>{filteredSolturas.length} registros encontrados</Text>
+          </View>
+
           <FlatList
-            data={getPaginatedData()}
-            keyExtractor={(item) => item.id}
-            renderItem={renderTableRow}
-            contentContainerStyle={styles.tableContent}
+            data={filteredSolturas}
+            renderItem={({ item }) => <SolturaCard item={item} onPress={() => openSolturaDetails(item)} />}
+            keyExtractor={(item, index) => `soltura-${index}`}
+            contentContainerStyle={styles.resultsList}
             showsVerticalScrollIndicator={false}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyListContainer}>
+                <Text style={styles.emptyListText}>Nenhum registro encontrado</Text>
+                <Text style={styles.emptyListSubtext}>Tente ajustar os filtros ou adicione novos registros</Text>
+              </View>
+            }
           />
         </View>
 
-        {/* Adicionar controles de paginação e linhas por página */}
-        <View style={styles.tableControls}>
-          <RowsPerPageSelector value={rowsPerPage} options={rowsPerPageOptions} onChange={setRowsPerPage} />
-          <Pagination />
-        </View>
+        <Pressable style={styles.backButton} onPress={navigateToForm}>
+          <Text style={styles.backButtonText}>Voltar para Formulário</Text>
+        </Pressable>
+      </Animated.View>
 
-        <View style={[styles.buttonContainer, { marginBottom: isSmallScreen ? 10 : 20 }]}>
-          <RippleButton
-            style={[
-              styles.backToFormButton,
-              {
-                height: getButtonHeight(),
-                marginTop: isSmallScreen ? 10 : 20,
-              },
-            ]}
-            textStyle={[styles.backToFormButtonText, { fontSize: normalize(isSmallScreen ? 13 : 15) }]}
-            onPress={navigateToFormulario}
-          >
-            VOLTAR PARA O FORMULÁRIO
-          </RippleButton>
-        </View>
-      </View>
-
-      <RotaDetailModal isVisible={modalVisible} rota={selectedRota} onClose={closeModal} />
+      {/* Modal de detalhes da soltura */}
+      <SolturaDetailModal visible={modalVisible} item={selectedSoltura} onClose={closeModal} />
     </SafeAreaView>
   )
 }
 
-// Adicionar estilos para prevenir flickering e melhorar a interação com o modal
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
   },
-  headerContainer: {
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    elevation: 4,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: "#555",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#f8f9fa",
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#e53935",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: "#777",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#2E7D32",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 3,
-    zIndex: 10,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
   header: {
     width: "100%",
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingBottom: 15,
-  },
-  titleContainer: {
-    alignItems: "center",
-    flex: 1,
+    marginTop: 60,
+    marginBottom: 25,
   },
   headerTitle: {
     fontWeight: "bold",
-    color: "#8BC34A",
-    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)",
+    color: "#2E7D32",
+    textShadow: "1px 1px 2px rgba(0, 0, 0, 0.05)",
+    fontSize: 32,
+    letterSpacing: 0.5,
   },
-  titleUnderline: {
-    height: 3,
-    width: 60,
-    backgroundColor: "#8BC34A",
-    marginTop: 8,
-    borderRadius: 1.5,
+  headerUnderline: {
+    height: 4,
+    width: 80,
+    backgroundColor: "#4CAF50",
+    marginTop: 10,
+    borderRadius: 2,
   },
-  backButton: {
-    padding: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    fontSize: normalize(24),
-    color: "#8BC34A",
-    fontWeight: "bold",
-  },
-  dateContainer: {
-    backgroundColor: "#f8f9fa",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  dateText: {
-    fontSize: normalize(14),
-    color: "#666",
-    fontWeight: "500",
-  },
-  // Estilos para a seção de pesquisa
-  searchSection: {
-    backgroundColor: "#fff",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    zIndex: 20,
-    marginBottom: 20, // Reduzido de 30 para 20
-  },
-  searchContainer: {
-    width: "100%",
-    zIndex: 25,
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  searchIconButton: {
-    padding: 8,
-    marginRight: 5,
-  },
-  searchIcon: {
-    fontSize: 16,
-    color: "#8BC34A",
-    marginRight: 5,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: normalize(14),
-    color: "#333",
-    height: "100%",
-    paddingVertical: 8,
-  },
-  clearSearchButton: {
-    padding: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  clearSearchButtonText: {
-    fontSize: normalize(14),
-    color: "#999",
-    fontWeight: "bold",
-  },
-  content: {
-    flex: 1,
-    marginTop: 5,
-  },
-  tableContainer: {
+  contentContainer: {
     flex: 1,
     backgroundColor: "white",
-    borderRadius: 15,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowRadius: 15,
     elevation: 5,
-    overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
-    marginTop: 15, // Reduzido de 25 para 15
-    zIndex: 1,
   },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 14,
-    paddingHorizontal: 15,
+  filtersContainer: {
+    marginBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderBottomColor: "#f0f0f0",
+    paddingBottom: 15,
   },
-  tableHeaderCell: {
-    fontWeight: "bold",
-    color: "#555",
-  },
-  tableContent: {
-    flexGrow: 1,
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  tableRowEven: {
-    backgroundColor: "#fff",
-  },
-  tableRowOdd: {
-    backgroundColor: "#f9f9f9",
-  },
-  tableCell: {
-    color: "#333",
-  },
-  // Estilos para controles de tabela (paginação e linhas por página)
-  tableControls: {
+  filtersSectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 15,
-    paddingHorizontal: 5,
+    marginBottom: 15,
   },
-  // Estilos para seletor de linhas por página
-  rowsPerPageContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    position: "relative",
+  filtersSectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
   },
-  rowsPerPageLabel: {
-    fontSize: normalize(12),
-    color: "#666",
-    marginRight: 8,
-  },
-  rowsPerPageSelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 15,
-    paddingHorizontal: 12,
+  clearFiltersButton: {
     paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: "#f0f0f0",
+  },
+  clearFiltersButtonText: {
+    color: "#666",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  filterSection: {
+    marginBottom: 15,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#555",
+    marginBottom: 10,
+    paddingLeft: 5,
+  },
+  filterChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingBottom: 5,
+  },
+  filterChipsVerticalContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingBottom: 5,
+    justifyContent: "flex-start",
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    marginRight: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  rowsPerPageValue: {
-    fontSize: normalize(12),
-    color: "#333",
-    marginRight: 5,
+  filterChipSelected: {
+    backgroundColor: "#e8f5e9",
+    borderColor: "#4CAF50",
   },
-  rowsPerPageArrow: {
-    fontSize: normalize(10),
+  filterChipText: {
+    color: "#666",
+    fontWeight: "500",
+    fontSize: 14,
+  },
+  filterChipTextSelected: {
+    color: "#2E7D32",
+    fontWeight: "bold",
+  },
+  resultsContainer: {
+    flex: 1,
+  },
+  resultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  resultsTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  resultsCount: {
+    fontSize: 14,
     color: "#666",
   },
-  rowsPerPageDropdown: {
-    position: "absolute",
-    top: "100%",
-    right: 0,
+  resultsList: {
+    paddingBottom: 20,
+  },
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  emptyListText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  emptyListSubtext: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+  },
+  solturaCard: {
     backgroundColor: "white",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderRadius: 16,
+    marginBottom: 15,
+    padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 1000,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+  },
+  solturaCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+    paddingBottom: 12,
+  },
+  solturaCardHeaderLeft: {
+    flex: 1,
+  },
+  solturaCardHeaderRight: {
+    flexDirection: "row",
+  },
+  solturaCardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  solturaCardSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  solturaCardBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "#4CAF50",
+  },
+  solturaCardBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  solturaCardContent: {
     marginTop: 5,
   },
-  rowsPerPageOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+  solturaCardRow: {
+    flexDirection: "row",
+    marginBottom: 8,
   },
-  rowsPerPageOptionSelected: {
-    backgroundColor: "#f0f7e6",
+  solturaCardLabel: {
+    width: 100,
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#555",
   },
-  rowsPerPageOptionText: {
-    fontSize: normalize(12),
+  solturaCardValue: {
+    flex: 1,
+    fontSize: 14,
     color: "#333",
   },
-  rowsPerPageOptionTextSelected: {
-    color: "#8BC34A",
-    fontWeight: "bold",
-  },
-  // Estilos para paginação
-  paginationContainer: {
-    flexDirection: "row",
+  viewMoreContainer: {
     alignItems: "center",
-    justifyContent: "center", // Center the pagination controls
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
   },
-  paginationButton: {
-    width: 36, // Slightly reduced from 40
-    height: 36, // Slightly reduced from 40
-    borderRadius: 18, // Half of width/height
-    backgroundColor: "#f5f5f5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 5, // Reduced from 10 to keep arrows within view
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  paginationButtonDisabled: {
-    opacity: 0.5,
-  },
-  paginationButtonText: {
-    fontSize: normalize(18),
-    color: "#8BC34A",
-    fontWeight: "bold",
-  },
-  paginationInfo: {
-    marginHorizontal: 10, // Reduced from 15
-    backgroundColor: "#f9f9f9",
-    paddingHorizontal: 12, // Reduced from 15
-    paddingVertical: 6, // Reduced from 8
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  paginationText: {
-    fontSize: normalize(14),
-    color: "#555",
+  viewMoreText: {
+    fontSize: 12,
+    color: "#2E7D32",
     fontWeight: "500",
   },
-  buttonContainer: {
-    marginTop: 10,
-  },
-  rippleButton: {
-    overflow: "hidden",
-    position: "relative",
-    borderRadius: 12,
-  },
-  rippleEffect: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "white",
-  },
-  buttonContent: {
-    flexDirection: "row",
+  backButton: {
+    backgroundColor: "#2E7D32",
+    paddingVertical: 14,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    width: "100%",
-    height: "100%",
-  },
-  buttonIcon: {
-    fontSize: normalize(18),
-    marginRight: 8,
-    color: "white",
-  },
-  buttonText: {
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  backToFormButton: {
-    backgroundColor: "#8BC34A",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 25,
+    marginTop: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 5,
+    elevation: 3,
   },
-  backToFormButtonText: {
+  backButtonText: {
     color: "white",
+    fontSize: 16,
     fontWeight: "bold",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
+
   // Modal styles
-  modalKeyboardAvoid: {
-    flex: 1,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 15,
   },
   modalContainer: {
     backgroundColor: "white",
-    borderRadius: 15,
-    padding: 0,
+    borderRadius: 24,
+    padding: 20,
+    width: "85%",
+    maxWidth: 500,
+    maxHeight: "80%",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
     elevation: 10,
-    overflow: "hidden",
-  },
-  modalHeaderGradient: {
-    backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
   },
   modalHeader: {
+    marginBottom: 20,
+  },
+  modalHeaderContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: normalize(18),
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#8BC34A",
+    color: "#2E7D32",
   },
-  closeButton: {
-    padding: 5,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
+  modalHeaderUnderline: {
+    height: 3,
+    width: "100%",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 1.5,
   },
-  closeButtonText: {
-    fontSize: normalize(16),
-    color: "#666",
+  modalBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: "#4CAF50",
+  },
+  modalBadgeText: {
+    color: "white",
+    fontSize: 12,
     fontWeight: "bold",
   },
-  modalContent: {
-    flexGrow: 0,
-    maxHeight: "70%", // Ensure modal content doesn't overflow
-  },
-  modalContentContainer: {
-    padding: 20,
+  modalScrollView: {
+    marginBottom: 20,
   },
   modalSection: {
     marginBottom: 20,
-    position: "relative",
-    zIndex: 1,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    paddingBottom: 8,
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: normalize(16),
-    fontWeight: "600",
-    color: "#8BC34A",
-  },
-  detailRow: {
-    marginBottom: 10,
-  },
-  detailLabel: {
-    fontSize: normalize(14),
-    fontWeight: "bold",
-    color: "#555",
-    marginBottom: 3,
-  },
-  detailValue: {
-    fontSize: normalize(16),
-    color: "#333",
-  },
-  coletoresList: {
-    marginTop: 5,
-    zIndex: 1,
-  },
-  coletorItem: {
-    backgroundColor: "#f5f5f5",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#8BC34A",
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  coletorText: {
-    fontSize: normalize(14),
-    color: "#333",
-    flex: 1,
-  },
-  observacoesContainer: {
-    backgroundColor: "#f5f5f5",
-    padding: 15,
-    borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: "#8BC34A",
-  },
-  observacoesText: {
-    fontSize: normalize(14),
-    color: "#333",
-    lineHeight: normalize(20),
-  },
-  modalFooter: {
-    padding: 15,
-    paddingTop: 0,
-  },
-  modalButton: {
-    backgroundColor: "#8BC34A",
-    padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 25,
-    width: "100%",
-    alignSelf: "center",
-    marginTop: 5,
-    marginBottom: 5,
-    height: 45,
-  },
-  modalButtonText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: normalize(14),
-    letterSpacing: 0.5,
-  },
-  // Estilos para o autocomplete
-  autocompleteContainer: {
-    position: "relative",
-    marginBottom: 10,
-    zIndex: 10,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#666",
-    borderRadius: 8,
-    backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    height: 40,
-  },
-  inputContainerFocused: {
-    borderColor: "#8BC34A",
-    borderWidth: 1.5,
-  },
-  input: {
-    flex: 1,
-    height: "100%",
-    fontSize: normalize(14),
-    color: "#333",
-  },
-  clearButton: {
-    padding: 5,
-    zIndex: 20,
-  },
-  clearButtonText: {
-    fontSize: normalize(16),
-    color: "#999",
-    fontWeight: "bold",
-  },
-  dropdownIconButton: {
-    padding: 5,
-    zIndex: 20,
-  },
-  dropdownIcon: {
-    fontSize: normalize(12),
-    color: "#999",
-  },
-  dropdownList: {
-    position: "absolute",
-    top: 42,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    maxHeight: 200, // Increased height for better visibility
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 10,
-    zIndex: 999,
-  },
-  dropdownItem: {
-    padding: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-    zIndex: 1000,
   },
-  dropdownItemText: {
-    fontSize: normalize(14),
+  modalRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  modalLabel: {
+    width: 120,
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#555",
+  },
+  modalValue: {
+    flex: 1,
+    fontSize: 15,
     color: "#333",
   },
-  dropdownItemTextSelected: {
-    color: "#8BC34A",
-    fontWeight: "bold",
-  },
-  // Loading screen styles
-  loadingScreenContainer: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  loadingScreenContent: {
-    flex: 1,
-    justifyContent: "center",
+  modalCloseButton: {
+    backgroundColor: "#2E7D32",
+    paddingVertical: 12,
+    borderRadius: 30,
     alignItems: "center",
-  },
-  loadingScreenText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-  },
-  searchInputContainerFocused: {
-    borderColor: "#8BC34A",
-    borderWidth: 1.5,
-    backgroundColor: "#f9f9f9",
-    shadowColor: "#8BC34A",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 3,
+    elevation: 2,
+  },
+  modalCloseButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 })
 
+export default FormularioHistorico

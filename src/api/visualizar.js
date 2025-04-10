@@ -1,6 +1,7 @@
 import axios from "axios"
 
 const BASE_URL = "http://192.168.0.103:8000/api"
+
 export const SolturaService = {
   getMotoristas: async () => {
     try {
@@ -147,22 +148,10 @@ export const SolturaService = {
             "AD23",
             "AD24",
             "DD11",
-            "BD12",
-            "BD13",
-            "BD14",
-            "BD15",
-            "BD16",
-            "BD17",
-            "BD18",
-            "BD19",
-            "BD21",
-            "DD11",
-            
-            
           ],
-          PA2: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24","BD12","BD13","BD14","BD15","BD16","BD17","BD18","BD19","BD20","BD21","BD22",],
-          PA3: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD23", "AD24","BD13","BD14","BD16","BD17","BD18","BD19","BD20","BD21","BD22","BD23","BD24"],
-          PA4: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24","BD12","BD13","BD14","BD15","BD16","BD17","BD18","BD19","BD20","BD21","BD22",],
+          PA2: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24"],
+          PA3: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD23", "AD24"],
+          PA4: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24"],
         },
       },
       Noturno: {
@@ -181,6 +170,7 @@ export const SolturaService = {
       },
     }
 
+    // Determine frequency pattern
     let frequencyPattern
     if (diasSegundaQuartaSexta.includes(frequencia)) {
       frequencyPattern = "SegundaQuartaSexta"
@@ -220,10 +210,10 @@ export const SolturaService = {
         nome_lider: solturaData.nome_lideres || "", // Envia vazio se não houver
         telefone_lider: solturaData.telefone_lider || "", // Envia vazio se não houver
         turno: solturaData.turno, // Novo campo para turno
-        tipo_servico: solturaData.tipo_servico,
-        tipo_equipe: solturaData.tipo_equipe, // Novo campo para tipo de frota
+        tipo_servico: solturaData.tipo_servico, // Novo campo para tipo de frota
         garagem: solturaData.garagem || "", // Garagem selecionada
-        rota: solturaData.setor || "", // A rota é o setor selecionado
+        rota: solturaData.setor || "",
+        tipo_equipe: solturaData.tipo_equipe,  // A rota é o setor selecionado
       })
 
       console.log("Resposta da criação de soltura:", response.data)
@@ -241,5 +231,25 @@ export const SolturaService = {
     const hours = String(time.getHours()).padStart(2, "0")
     const minutes = String(time.getMinutes()).padStart(2, "0")
     return `${hours}:${minutes}`
+  },
+
+  // Função para buscar solturas do dia
+  getSolturas: async () => {
+    try {
+      console.log("Buscando solturas do dia...")
+      const response = await axios.get(`${BASE_URL}/soltura/ver_solturas_dia/`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true, // para autenticação via session/cookie
+      })
+
+      console.log("Solturas do dia recebidas:", response.data)
+      return response.data
+    } catch (error) {
+      console.error("Erro ao buscar solturas do dia:", error)
+      console.error("Detalhes do erro:", error.response ? error.response.data : "Sem resposta do servidor")
+      throw new Error("Falha ao buscar solturas do dia. " + (error.response?.data?.message || error.message))
+    }
   },
 }

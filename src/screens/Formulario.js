@@ -22,9 +22,9 @@ import {
   Alert,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { SolturaService } from "../api/soltura"
+import { SolturaService } from "../api/visualizar"
 
-// Função para calcular tamanhos responsivos baseados no tipo de dispositivo
+
 const getDeviceType = () => {
   const { width, height } = Dimensions.get("window")
   const screenSize = Math.min(width, height)
@@ -51,12 +51,9 @@ const useOrientation = () => {
   return orientation
 }
 
-// Função para normalizar tamanhos de texto
 const normalize = (size) => {
   const deviceType = getDeviceType()
   const { width: SCREEN_WIDTH } = Dimensions.get("window")
-
-  // Ajuste de escala baseado no tipo de dispositivo
   let scaleFactor
   switch (deviceType) {
     case "tablet":
@@ -526,7 +523,15 @@ const Autocomplete = ({
 }
 
 // ColetoresSelector reescrito para melhor resposta ao toque
-const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], maxColetores = 3, label, error }) => {
+const ColetoresSelector = ({
+  coletores,
+  setColetores,
+  availableColetores = [],
+  maxColetores = 3,
+  label,
+  error,
+  disabled = false,
+}) => {
   const [coletor, setColetor] = useState("")
   const [filteredColetores, setFilteredColetores] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -714,6 +719,7 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
         onPress={forceFocus}
         android_ripple={{ color: "rgba(0, 0, 0, 0.05)", borderless: false }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        disabled={disabled}
       >
         <Animated.View
           style={[
@@ -722,31 +728,33 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
               borderColor,
               borderWidth: 1.5, // Reduced from 2 to 1.5
               height: inputHeight,
+              opacity: disabled ? 0.6 : 1,
             },
           ]}
         >
           <TextInput
             ref={inputRef}
-            style={[styles.animatedInput, { flex: 1, fontSize: 16 }]} // Reduced font size
+            style={[styles.animatedInput, { flex: 1, fontSize: 16, pointerEvents: disabled ? "none" : "auto" }]} // Reduced font size
             placeholder={isFocused ? "Nome do coletor" : ""}
             placeholderTextColor="#999"
             value={coletor}
             onChangeText={setColetor}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            editable={!disabled}
           />
           <Pressable
             style={[
               styles.addButton,
               {
-                opacity: coletores.length >= maxColetores ? 0.5 : 1,
+                opacity: coletores.length >= maxColetores || disabled ? 0.5 : 1,
                 width: getResponsiveSize(36), // Reduced size for more minimalist look
                 height: getResponsiveSize(36), // Reduced size for more minimalist look
                 borderRadius: getResponsiveSize(18), // Adjusted for circle
               },
             ]}
             onPress={addColetor}
-            disabled={coletores.length >= maxColetores}
+            disabled={coletores.length >= maxColetores || disabled}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
           >
@@ -762,20 +770,30 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Dropdown para seleção de coletores */}
-      {showDropdown && filteredColetores.length > 0 && (
-        <Animated.View
-          style={[
-            styles.dropdownContainer,
-            {
-              maxHeight: dropdownMaxHeight,
-              opacity: dropdownOpacity,
-            },
-          ]}
+      {!disabled && showDropdown && filteredColetores.length > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: inputHeight, // Posicionar exatamente na altura do input
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            elevation: 1000,
+            backgroundColor: "white",
+            borderWidth: 1,
+            borderColor: "#eee",
+            borderRadius: 12,
+            maxHeight: 200,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+          }}
         >
-          <ScrollView style={styles.dropdown} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
+          <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
             {renderDropdownItems()}
           </ScrollView>
-        </Animated.View>
+        </View>
       )}
 
       <Animated.View style={[styles.coletoresList, { transform: [{ scale: scaleAnim }] }]}>
@@ -794,6 +812,7 @@ const ColetoresSelector = ({ coletores, setColetores, availableColetores = [], m
               onPress={() => removeColetor(index)}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               android_ripple={{ color: "rgba(255, 255, 255, 0.3)", borderless: false }}
+              disabled={disabled}
             >
               {/* Replaced text with a more minimalist minus icon */}
               <View style={styles.minusIcon}>
@@ -1465,6 +1484,127 @@ const CheckboxGroup = ({ options, value, onChange, label, error }) => {
   )
 }
 
+// Modificar o componente EquipeSelector para usar radio buttons em vez de checkboxes
+// e atualizar o turno automaticamente com base na equipe selecionada
+const EquipeSelector = ({ selectedEquipe, setSelectedEquipe, tipoServico, error, setTurno }) => {
+  const inputHeight = getInputHeight()
+  const borderColorAnim = useRef(new Animated.Value(0)).current
+  const [isFocused, setIsFocused] = useState(false)
+
+  // Definição das equipes disponíveis
+  const equipes = [
+    { id: 1, nome: "Equipe 1 (Matutino)", value: "matutino", periodo: "diurno" },
+    { id: 2, nome: "Equipe 2 (Vespertino)", value: "vespertino", periodo: "diurno" },
+    { id: 3, nome: "Equipe 3 (Noturno)", value: "noturno", periodo: "noturno" },
+  ]
+
+  useEffect(() => {
+    Animated.timing(borderColorAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 100,
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused, borderColorAnim])
+
+  // Verifica se a equipe está desabilitada com base no tipo de serviço
+  const isDisabled = (equipe) => {
+    if (tipoServico === "Coleta") {
+      return equipe.value === "vespertino" // Desabilita Equipe 2 para Coleta
+    }
+    return false
+  }
+
+  // Seleciona uma equipe e atualiza o turno automaticamente
+  const selectEquipe = (equipe) => {
+    if (isDisabled(equipe)) return
+
+    setIsFocused(true)
+    setTimeout(() => setIsFocused(false), 100)
+
+    setSelectedEquipe(equipe.value)
+
+    // Atualiza o turno automaticamente com base na equipe selecionada
+    if (equipe.periodo === "diurno") {
+      setTurno("Diurno")
+    } else if (equipe.periodo === "noturno") {
+      setTurno("Noturno")
+    }
+  }
+
+  const borderColor = borderColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ddd", "#4CAF50"],
+  })
+
+  return (
+    <View style={styles.inputWrapper}>
+      <Text
+        style={{
+          position: "absolute",
+          left: 15,
+          top: -8,
+          fontSize: 12,
+          color: "#4CAF50",
+          backgroundColor: "white",
+          paddingHorizontal: 4,
+          zIndex: 1,
+          fontWeight: "500",
+        }}
+      >
+        Equipe
+      </Text>
+
+      <Animated.View
+        style={[
+          styles.checkboxContainer,
+          {
+            borderColor,
+            borderWidth: 1.5,
+            borderRadius: 12,
+            padding: 5,
+          },
+        ]}
+      >
+        {equipes.map((equipe, index) => (
+          <Pressable
+            key={equipe.id}
+            style={[
+              styles.equipeCheckboxItem,
+              { borderBottomWidth: index < equipes.length - 1 ? 1 : 0, borderBottomColor: "#f0f0f0" },
+              isDisabled(equipe) && styles.disabledCheckbox,
+            ]}
+            onPress={() => selectEquipe(equipe)}
+            disabled={isDisabled(equipe)}
+          >
+            <View style={styles.checkboxInner}>
+              <View
+                style={[
+                  styles.checkbox,
+                  selectedEquipe === equipe.value && styles.checkboxSelected,
+                  isDisabled(equipe) && styles.checkboxDisabled,
+                ]}
+              >
+                {selectedEquipe === equipe.value && <View style={styles.checkboxDot} />}
+              </View>
+              <Text
+                style={[
+                  styles.checkboxLabel,
+                  selectedEquipe === equipe.value && styles.checkboxLabelSelected,
+                  isDisabled(equipe) && styles.checkboxLabelDisabled,
+                ]}
+              >
+                {equipe.nome}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </Animated.View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  )
+}
+
 // Modal de confirmação para exibir os dados da soltura
 const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmation = false }) => {
   const scaleAnim = useRef(new Animated.Value(0.5)).current
@@ -1554,6 +1694,8 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
             {
               opacity: opacityAnim,
               transform: [{ scale: scaleAnim }],
+              maxHeight: "90%", // Limita a altura máxima para não sair da tela
+              overflow: "auto", // Permite rolagem se o conteúdo for muito grande
             },
           ]}
         >
@@ -1562,81 +1704,96 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
             <View style={styles.solturaHeaderUnderline} />
           </View>
 
-          <View style={styles.solturaContent}>
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Motorista:</Text>
-              <Text style={styles.solturaValue}>{formData.motorista || "N/A"}</Text>
-            </View>
+          <ScrollView style={{ maxHeight: "70%" }}>
+            <View style={styles.solturaContent}>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Motorista:</Text>
+                <Text style={styles.solturaValue}>{formData.motorista || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Prefixo:</Text>
-              <Text style={styles.solturaValue}>{formData.prefixo || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Prefixo:</Text>
+                <Text style={styles.solturaValue}>{formData.prefixo || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Data/Hora:</Text>
-              <Text style={styles.solturaValue}>{formatDateTime(formData.dataHora)}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Data/Hora:</Text>
+                <Text style={styles.solturaValue}>{formatDateTime(formData.dataHora)}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Hora Entrega Chave:</Text>
-              <Text style={styles.solturaValue}>{formatTime(formData.horaEntregaChave)}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Hora Entrega Chave:</Text>
+                <Text style={styles.solturaValue}>{formatTime(formData.horaEntregaChave)}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Hora Saída Frota:</Text>
-              <Text style={styles.solturaValue}>{formatTime(formData.horaSaidaFrota)}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Hora Saída Frota:</Text>
+                <Text style={styles.solturaValue}>{formatTime(formData.horaSaidaFrota)}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Turno:</Text>
-              <Text style={styles.solturaValue}>{formData.turno || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Turno:</Text>
+                <Text style={styles.solturaValue}>{formData.turno || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Tipo de Serviço:</Text>
-              <Text style={styles.solturaValue}>{formData.tipoServico || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Tipo de Serviço:</Text>
+                <Text style={styles.solturaValue}>{formData.tipoServico || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Frequência:</Text>
-              <Text style={styles.solturaValue}>{formData.frequencia || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Frequência:</Text>
+                <Text style={styles.solturaValue}>{formData.frequencia || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Garagem:</Text>
-              <Text style={styles.solturaValue}>{formData.garagem || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Garagem:</Text>
+                <Text style={styles.solturaValue}>{formData.garagem || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Setor:</Text>
-              <Text style={styles.solturaValue}>{formData.setor || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Setor:</Text>
+                <Text style={styles.solturaValue}>{formData.setor || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Rota:</Text>
-              <Text style={styles.solturaValue}>{formData.rota || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Rota:</Text>
+                <Text style={styles.solturaValue}>{formData.rota || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Coletores:</Text>
-              <Text style={styles.solturaValue}>
-                {formData.coletores && formData.coletores.length > 0 ? formData.coletores.join(", ") : "N/A"}
-              </Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Coletores:</Text>
+                <Text style={styles.solturaValue}>
+                  {formData.coletores && formData.coletores.length > 0 ? formData.coletores.join(", ") : "N/A"}
+                </Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Celular:</Text>
-              <Text style={styles.solturaValue}>{formData.celular || "N/A"}</Text>
-            </View>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Celular:</Text>
+                <Text style={styles.solturaValue}>{formData.celular || "N/A"}</Text>
+              </View>
 
-            <View style={styles.solturaRow}>
-              <Text style={styles.solturaLabel}>Líderes:</Text>
-              <Text style={styles.solturaValue}>
-                {formData.lideres && formData.lideres.length > 0 ? formData.lideres.join(", ") : "N/A"}
-              </Text>
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Líderes:</Text>
+                <Text style={styles.solturaValue}>
+                  {formData.lideres && formData.lideres.length > 0 ? formData.lideres.join(", ") : "N/A"}
+                </Text>
+              </View>
+
+              <View style={styles.solturaRow}>
+                <Text style={styles.solturaLabel}>Equipe:</Text>
+                <Text style={styles.solturaValue}>
+                  {formData.equipe === "matutino"
+                    ? "Equipe 1 (Matutino)"
+                    : formData.equipe === "vespertino"
+                      ? "Equipe 2 (Vespertino)"
+                      : formData.equipe === "noturno"
+                        ? "Equipe 3 (Noturno)"
+                        : "N/A"}
+                </Text>
+              </View>
             </View>
-          </View>
+          </ScrollView>
 
           {isConfirmation ? (
             <View style={styles.confirmationButtonsContainer}>
@@ -1970,9 +2127,11 @@ const Formulario = ({ navigation }) => {
   const [turno, setTurno] = useState("")
   const [tipoServico, setTipoServico] = useState("") // Changed from tipo_coleta to tipoServico
   const [garagem, setGaragem] = useState("")
+  const [selectedEquipe, setSelectedEquipe] = useState("")
+  // Remover o estado de selectedEquipes (array) e manter apenas o turno
 
   const [turnosData] = useState(["Diurno", "Noturno"])
-  const [tiposServicoData] = useState(["Coleta", "Seletiva", "Varição", "Remoção"]) // Changed from tiposFrotaData to tiposServicoData
+  const [tiposServicoData] = useState(["Coleta", "Seletiva", "Varrição", "Remoção"]) // Changed from tiposFrotaData to tiposServicoData
 
   // Atualiza os setores disponíveis com base no tipo de serviço, turno, frequência e garagem
   useEffect(() => {
@@ -1989,14 +2148,14 @@ const Formulario = ({ navigation }) => {
       // Se é coleta mas faltam parâmetros, limpa os setores
       setSetoresData([])
       setSetor("")
-    } else if (tipoServico === "Seletiva" || tipoServico === "Varição") {
+    } else if (tipoServico === "Seletiva" || tipoServico === "Varrição") {
       // Para Seletiva e Varição, carrega todos os setores disponíveis sem filtrar
       try {
         // Usar os setores originais da API sem aplicar regras de filtro
         const outrosDados = SolturaService.getOutrosDados()
         setSetoresData(outrosDados.setores || [])
       } catch (error) {
-        console.error("Erro ao carregar setores para Seletiva/Varição:", error)
+        console.error("Erro ao carregar setores para Seletiva/Varrição:", error)
         setSetoresData([])
       }
     }
@@ -2017,10 +2176,17 @@ const Formulario = ({ navigation }) => {
       setSetor("")
       setFrequencia("")
       setGaragem("")
-    } else if (tipoServico !== "Coleta" && tipoServico !== "Seletiva" && tipoServico !== "Varição") {
+    } else if (tipoServico === "Varrição") {
+      // Limpar coletores quando o tipo de serviço for Varrição
+      setColetores([])
+    } else if (tipoServico !== "Coleta" && tipoServico !== "Seletiva" && tipoServico !== "Varrição") {
       setGaragem("")
       setSetor("")
     }
+
+    // Limpa a equipe selecionada quando o tipo de serviço muda
+    setSelectedEquipe("")
+    setTurno("")
   }, [tipoServico])
 
   // Carregar dados da API usando as URLs específicas
@@ -2086,6 +2252,7 @@ const Formulario = ({ navigation }) => {
     }).start()
   }, [])
 
+  // Modificar a função validateForm para não exigir setor e celular para Remoção
   const validateForm = () => {
     const newErrors = {}
 
@@ -2094,20 +2261,27 @@ const Formulario = ({ navigation }) => {
     if (!dataHora) newErrors.dataHora = "Data e hora são obrigatórios"
     if (!turno) newErrors.turno = "Turno é obrigatório"
     if (!tipoServico) newErrors.tipoServico = "Tipo de Serviço é obrigatório"
+    if (!selectedEquipe) newErrors.equipe = "Selecione uma equipe"
 
     // Validações específicas para cada tipo de serviço
-    if (tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição") {
+    if (tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição") {
       if (!frequencia) newErrors.frequencia = "Frequência é obrigatória"
       if (!garagem) newErrors.garagem = "Garagem é obrigatória"
       if (!setor) newErrors.setor = "Setor é obrigatório"
     }
 
-    if (coletores.length === 0) newErrors.coletores = "Adicione pelo menos um coletor"
+    // Coletores não são obrigatórios para Varrição
+    if (tipoServico !== "Varrição" && coletores.length === 0) {
+      newErrors.coletores = "Adicione pelo menos um coletor"
+    }
 
-    if (!celular) {
-      newErrors.celular = "Celular é obrigatório"
-    } else if (celular.replace(/\D/g, "").length !== 11) {
-      newErrors.celular = "Celular inválido"
+    // Celular não é obrigatório para Remoção e Varrição
+    if (tipoServico !== "Remoção" && tipoServico !== "Varrição") {
+      if (!celular) {
+        newErrors.celular = "Celular é obrigatório"
+      } else if (celular.replace(/\D/g, "").length !== 11) {
+        newErrors.celular = "Celular inválido"
+      }
     }
 
     if (lideres.length === 0) newErrors.lideres = "Adicione pelo menos um líder"
@@ -2120,6 +2294,7 @@ const Formulario = ({ navigation }) => {
     return Object.keys(newErrors).length === 0
   }
 
+  // Modificar a função resetForm para resetar apenas uma equipe
   const resetForm = () => {
     setMotorista("")
     setPrefixo("")
@@ -2127,17 +2302,19 @@ const Formulario = ({ navigation }) => {
     setFrequencia("")
     setSetor("")
     setGaragem("")
-    setRota("") // Add this line
+    setRota("")
     setColetores([])
     setCelular("")
-    setLideres([]) // Reset lideres array
+    setLideres([])
     setHoraEntregaChave(null)
     setHoraSaidaFrota(null)
     setErrors({})
     setTurno("")
     setTipoServico("")
+    setSelectedEquipe("")
   }
 
+  // Modificar a função handleSubmit para incluir apenas uma equipe
   const handleSubmit = () => {
     if (validateForm()) {
       // Preparar dados para exibir no modal de confirmação
@@ -2148,14 +2325,15 @@ const Formulario = ({ navigation }) => {
         frequencia,
         garagem,
         setor,
-        rota, // Add rota here
+        rota,
         coletores,
         celular,
-        lideres, // Changed from lider to lideres
+        lideres,
         horaEntregaChave,
         horaSaidaFrota,
         turno,
         tipoServico,
+        equipe: selectedEquipe,
       }
 
       setFormData(formDataToConfirm)
@@ -2163,6 +2341,7 @@ const Formulario = ({ navigation }) => {
     }
   }
 
+  // Modificar a função handleConfirmSubmit para incluir apenas uma equipe
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true)
     setShowConfirmationModal(false)
@@ -2176,9 +2355,9 @@ const Formulario = ({ navigation }) => {
         prefixo: prefixo,
         coletores: coletores,
         frequencia: tipoServico === "Remoção" ? "N/A" : frequencia,
-        setor: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? setor : "N/A",
-        garagem: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? garagem : "N/A",
-        rota: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varição" ? rota : "N/A", // Add rota here
+        setor: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? setor : "N/A",
+        garagem: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? garagem : "N/A",
+        rota: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? rota : "N/A",
         celular: celular,
         lideres: lideres,
         hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
@@ -2187,6 +2366,7 @@ const Formulario = ({ navigation }) => {
         tipo_servico: tipoServico,
         nome_lideres: lideres,
         telefone_lider: celular,
+        equipe: selectedEquipe,
       }
 
       // Enviar para a API
@@ -2209,14 +2389,14 @@ const Formulario = ({ navigation }) => {
   const navigateToHistorico = () => {
     setShowHistoryLoading(true)
 
-    // Simular carregamento e navegação
+
     setTimeout(() => {
       setShowHistoryLoading(false)
       navigation?.navigate("FormularioHistorico")
     }, 2500)
   }
 
-  // Renderizar tela de carregamento
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingScreenContainer}>
@@ -2228,7 +2408,7 @@ const Formulario = ({ navigation }) => {
     )
   }
 
-  // Renderizar erro de carregamento
+
   if (loadingError) {
     return (
       <SafeAreaView style={styles.errorContainer}>
@@ -2241,7 +2421,7 @@ const Formulario = ({ navigation }) => {
     )
   }
 
-  // Função para calcular a largura do formulário com base no tamanho da tela e orientação
+
   const getFormWidth = () => {
     if (isTablet) {
       return isLandscape ? width * 0.9 : width * 0.8
@@ -2250,7 +2430,7 @@ const Formulario = ({ navigation }) => {
     return isLandscape ? width * 0.8 : width * 0.9
   }
 
-  // Função para calcular o padding do formulário com base no tipo de dispositivo
+
   const getFormPadding = () => {
     const deviceType = getDeviceType()
     switch (deviceType) {
@@ -2353,20 +2533,6 @@ const Formulario = ({ navigation }) => {
                       error={errors.horaSaidaFrota}
                     />
 
-                    <Autocomplete
-                      data={turnosData}
-                      value={turno}
-                      onChangeText={setTurno}
-                      onSelect={setTurno}
-                      placeholder="Selecione o turno"
-                      label="Turno"
-                      error={errors.turno}
-                      zIndex={5}
-                      id="turno"
-                    />
-                  </View>
-
-                  <View style={styles.column}>
                     <CheckboxGroup
                       options={tiposServicoData}
                       value={tipoServico}
@@ -2375,6 +2541,54 @@ const Formulario = ({ navigation }) => {
                       error={errors.tipoServico}
                     />
 
+                    <EquipeSelector
+                      selectedEquipe={selectedEquipe}
+                      setSelectedEquipe={setSelectedEquipe}
+                      tipoServico={tipoServico}
+                      error={errors.equipe}
+                      setTurno={setTurno}
+                    />
+
+                   
+                    <View style={styles.inputWrapper}>
+                      <Animated.Text
+                        style={{
+                          position: "absolute",
+                          left: 15,
+                          top: -8,
+                          fontSize: 12,
+                          color: "#4CAF50",
+                          backgroundColor: "white",
+                          paddingHorizontal: 4,
+                          zIndex: 1,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Turno
+                      </Animated.Text>
+                      <Animated.View
+                        style={[
+                          styles.animatedInputContainer,
+                          {
+                            borderColor: "#ddd",
+                            borderWidth: 1.5,
+                            height: getInputHeight(),
+                            backgroundColor: "#f9f9f9",
+                          },
+                        ]}
+                      >
+                        <TextInput
+                          style={[styles.animatedInput, { fontSize: 16 }]}
+                          value={turno}
+                          editable={false}
+                          placeholder=""
+                        />
+                      </Animated.View>
+                      {errors.turno ? <Text style={styles.errorText}>{errors.turno}</Text> : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.column}>
                     <Autocomplete
                       data={frequenciasData}
                       value={frequencia}
@@ -2398,7 +2612,7 @@ const Formulario = ({ navigation }) => {
                       error={errors.garagem}
                       zIndex={8}
                       id="garagem"
-                      disabled={tipoServico === "Remoção"}
+                      disabled={false} 
                     />
 
                     <Autocomplete
@@ -2415,8 +2629,6 @@ const Formulario = ({ navigation }) => {
                         tipoServico === "Remoção" || (tipoServico === "Coleta" && (!garagem || !turno || !frequencia))
                       }
                     />
-
-                    {/* Rota field - automatically generated */}
                     <View style={styles.inputWrapper}>
                       <Animated.Text
                         style={{
@@ -2460,6 +2672,7 @@ const Formulario = ({ navigation }) => {
                       maxColetores={3}
                       label="Coletores (máx. 3)"
                       error={errors.coletores}
+                      disabled={tipoServico === "Varrição"}
                     />
 
                     <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
@@ -2532,18 +2745,6 @@ const Formulario = ({ navigation }) => {
                   <View style={styles.formSection}>
                     <Text style={styles.sectionTitle}>Detalhes do Serviço</Text>
 
-                    <Autocomplete
-                      data={turnosData}
-                      value={turno}
-                      onChangeText={setTurno}
-                      onSelect={setTurno}
-                      placeholder="Selecione o turno"
-                      label="Turno"
-                      error={errors.turno}
-                      zIndex={8}
-                      id="turno"
-                    />
-
                     <CheckboxGroup
                       options={tiposServicoData}
                       value={tipoServico}
@@ -2551,6 +2752,50 @@ const Formulario = ({ navigation }) => {
                       label="Tipo de Serviço"
                       error={errors.tipoServico}
                     />
+
+                    <EquipeSelector
+                      selectedEquipe={selectedEquipe}
+                      setSelectedEquipe={setSelectedEquipe}
+                      tipoServico={tipoServico}
+                      error={errors.equipe}
+                      setTurno={setTurno}
+                    />
+                    <View style={styles.inputWrapper}>
+                      <Animated.Text
+                        style={{
+                          position: "absolute",
+                          left: 15,
+                          top: -8,
+                          fontSize: 12,
+                          color: "#4CAF50",
+                          backgroundColor: "white",
+                          paddingHorizontal: 4,
+                          zIndex: 1,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Turno
+                      </Animated.Text>
+                      <Animated.View
+                        style={[
+                          styles.animatedInputContainer,
+                          {
+                            borderColor: "#ddd",
+                            borderWidth: 1.5,
+                            height: getInputHeight(),
+                            backgroundColor: "#f9f9f9",
+                          },
+                        ]}
+                      >
+                        <TextInput
+                          style={[styles.animatedInput, { fontSize: 16 }]}
+                          value={turno}
+                          editable={false}
+                          placeholder=""
+                        />
+                      </Animated.View>
+                      {errors.turno ? <Text style={styles.errorText}>{errors.turno}</Text> : null}
+                    </View>
 
                     <Autocomplete
                       data={frequenciasData}
@@ -2575,7 +2820,7 @@ const Formulario = ({ navigation }) => {
                       error={errors.garagem}
                       zIndex={6}
                       id="garagem"
-                      disabled={tipoServico === "Remoção"}
+                      disabled={false} 
                     />
 
                     <Autocomplete
@@ -2592,8 +2837,6 @@ const Formulario = ({ navigation }) => {
                         tipoServico === "Remoção" || (tipoServico === "Coleta" && (!garagem || !turno || !frequencia))
                       }
                     />
-
-                    {/* Rota field - automatically generated */}
                     <View style={styles.inputWrapper}>
                       <Animated.Text
                         style={{
@@ -2641,6 +2884,7 @@ const Formulario = ({ navigation }) => {
                       maxColetores={3}
                       label="Coletores (máx. 3)"
                       error={errors.coletores}
+                      disabled={tipoServico === "Varrição"}
                     />
 
                     <CelularInput value={celular} onChangeText={setCelular} label="Celular" error={errors.celular} />
@@ -2656,8 +2900,6 @@ const Formulario = ({ navigation }) => {
                   </View>
                 </>
               )}
-
-              {/* Botão de Histórico de Soltura de Rotas - Estilo atualizado */}
               <TouchableArea
                 style={[
                   styles.historicoButton,
@@ -2676,7 +2918,7 @@ const Formulario = ({ navigation }) => {
                 </View>
               </TouchableArea>
 
-              {/* Botão de enviar - Agora abre o modal de confirmação */}
+
               <Ripple
                 style={[
                   styles.submitButton,
@@ -2699,7 +2941,7 @@ const Formulario = ({ navigation }) => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Modal de confirmação antes de enviar */}
+
         <SolturaInfoModal
           visible={showConfirmationModal}
           onClose={() => setShowConfirmationModal(false)}
@@ -2708,10 +2950,10 @@ const Formulario = ({ navigation }) => {
           isConfirmation={true}
         />
 
-        {/* Mensagem de sucesso estilizada */}
+        
         <SuccessMessage visible={showSuccessMessage} onClose={() => setShowSuccessMessage(false)} />
 
-        {/* Tela de carregamento do histórico */}
+        
         <HistoryLoadingScreen visible={showHistoryLoading} onClose={() => setShowHistoryLoading(false)} />
       </SafeAreaView>
     </ActiveAutocompleteProvider>
@@ -2726,7 +2968,7 @@ const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
     backgroundColor: "#ffffff",
-    paddingTop: 0, // Removed dynamic padding
+    paddingTop: 0, 
   },
   backgroundContainer: {
     position: "absolute",
@@ -2747,7 +2989,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingBottom: 30,
     alignItems: "center",
-    paddingTop: 20, // Added padding at the top to move form down
+    paddingTop: 20, 
   },
   header: {
     width: "100%",
@@ -2840,7 +3082,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333",
-    fontSize: 16, // Reduced font size
+    fontSize: 16, 
     fontWeight: "500",
   },
   clearButton: {
@@ -2897,7 +3139,7 @@ const styles = StyleSheet.create({
   },
   dateTimeText: {
     flex: 1,
-    fontSize: 16, // Reduced font size
+    fontSize: 16,
     fontWeight: "500",
   },
   calendarIcon: {
@@ -2926,7 +3168,6 @@ const styles = StyleSheet.create({
     boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.15)",
     elevation: 2,
   },
-  // New styles for plus icon
   plusIcon: {
     width: "100%",
     height: "100%",
@@ -2946,7 +3187,6 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     position: "absolute",
   },
-  // New styles for minus icon
   minusIcon: {
     width: "100%",
     height: "100%",
@@ -3020,7 +3260,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontSize: 16,
   },
-  // Estilos para o botão de histórico - ATUALIZADO
   historicoButton: {
     justifyContent: "center",
     alignItems: "center",
@@ -3062,7 +3301,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Estilos para o modal de informações de soltura
   solturaInfoContainer: {
     backgroundColor: "white",
     borderRadius: 16,
@@ -3127,7 +3365,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  // Confirmation modal buttons
   confirmationButtonsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -3163,7 +3400,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  // Success message styles
   successMessageOverlay: {
     position: "absolute",
     top: 0,
@@ -3220,7 +3456,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
-  // Improved loading screen container
   loadingScreenContainer: {
     flex: 1,
     backgroundColor: "white",
@@ -3266,8 +3501,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-
-  // Loading screen styles
   loadingOverlay: {
     position: "absolute",
     top: 0,
@@ -3429,6 +3662,19 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingLeft: 5,
   },
+  equipeCheckboxItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  disabledCheckbox: {
+    opacity: 0.5,
+  },
+  checkboxDisabled: {
+    borderColor: "#ccc",
+    backgroundColor: "#f5f5f5",
+  },
+  checkboxLabelDisabled: {
+    color: "#999",
+  },
 })
-
 export default Formulario
