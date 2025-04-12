@@ -1,7 +1,7 @@
 import axios from "axios"
 
-const BASE_URL = "http://192.168.0.103:8000/api"
-export const SolturaService = {
+const BASE_URL = "http:/192.168.0.53:8000/api"
+export const CriarSolturaService = {
   getMotoristas: async () => {
     try {
       console.log("Buscando motoristas...")
@@ -76,7 +76,7 @@ export const SolturaService = {
   getTurnos: async () => {
     try {
       console.log("Buscando turnos...")
-      const turnosData = ["Diurno", "Noturno"]
+      const turnosData = ["Matutino", "Vespertino", "Noturno"]
       console.log("Turnos recebidos:", turnosData)
       return turnosData
     } catch (error) {
@@ -97,7 +97,7 @@ export const SolturaService = {
   },
 
   // Substituir a função getRotasDisponiveis existente com a implementação completa da lógica de rotas
-  getRotasDisponiveis: (tipoServico, turno, frequencia, garagem) => {
+  getSetoresDisponiveis: (tipoServico, turno, frequencia, garagem) => {
     // Check if service type is "Coleta"
     if (tipoServico !== "Coleta") {
       return []
@@ -109,7 +109,7 @@ export const SolturaService = {
 
     // Define routes based on shift, frequency pattern, and garage
     const rotas = {
-      Diurno: {
+      Matutino: {
         SegundaQuartaSexta: {
           PA1: [
             "AD12",
@@ -157,12 +157,81 @@ export const SolturaService = {
             "BD19",
             "BD21",
             "DD11",
-            
-            
           ],
-          PA2: ["AD12", "AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24","BD12","BD13","BD14","BD15","BD16","BD17","BD18","BD19","BD20","BD21","BD22",],
-          PA3: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD23", "AD24","BD13","BD14","BD16","BD17","BD18","BD19","BD20","BD21","BD22","BD23","BD24"],
-          PA4: ["AD13", "AD14", "AD15", "AD16", "AD17", "AD18", "AD19", "AD20", "AD21", "AD22", "AD24","BD12","BD13","BD14","BD15","BD16","BD17","BD18","BD19","BD20","BD21","BD22",],
+          PA2: [
+            "AD12",
+            "AD13",
+            "AD14",
+            "AD15",
+            "AD16",
+            "AD17",
+            "AD18",
+            "AD19",
+            "AD20",
+            "AD21",
+            "AD22",
+            "AD24",
+            "BD12",
+            "BD13",
+            "BD14",
+            "BD15",
+            "BD16",
+            "BD17",
+            "BD18",
+            "BD19",
+            "BD20",
+            "BD21",
+            "BD22",
+          ],
+          PA3: [
+            "AD13",
+            "AD14",
+            "AD15",
+            "AD16",
+            "AD17",
+            "AD18",
+            "AD19",
+            "AD20",
+            "AD21",
+            "AD22",
+            "AD23",
+            "AD24",
+            "BD13",
+            "BD14",
+            "BD16",
+            "BD17",
+            "BD18",
+            "BD19",
+            "BD20",
+            "BD21",
+            "BD22",
+            "BD23",
+            "BD24",
+          ],
+          PA4: [
+            "AD13",
+            "AD14",
+            "AD15",
+            "AD16",
+            "AD17",
+            "AD18",
+            "AD19",
+            "AD20",
+            "AD21",
+            "AD22",
+            "AD24",
+            "BD12",
+            "BD13",
+            "BD14",
+            "BD15",
+            "BD16",
+            "BD17",
+            "BD18",
+            "BD19",
+            "BD20",
+            "BD21",
+            "BD22",
+          ],
         },
       },
       Noturno: {
@@ -222,8 +291,8 @@ export const SolturaService = {
         turno: solturaData.turno, // Novo campo para turno
         tipo_servico: solturaData.tipo_servico,
         tipo_equipe: solturaData.tipo_equipe, // Novo campo para tipo de frota
-        garagem: solturaData.garagem || "", // Garagem selecionada
-        rota: solturaData.setor || "", // A rota é o setor selecionado
+        garagem: solturaData.garagem, // Garagem selecionada
+        rota: solturaData.rota, // A rota é o setor selecionado
       })
 
       console.log("Resposta da criação de soltura:", response.data)

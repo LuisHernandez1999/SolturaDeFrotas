@@ -15,6 +15,7 @@ import {
   FlatList,
   Modal,
   TouchableOpacity,
+  TextInput,
 } from "react-native"
 import { SolturaService } from "../api/visualizar"
 
@@ -140,6 +141,8 @@ const getEquipeLabel = (equipe) => {
       return "Equipe 2 (Vespertino)"
     case "noturno":
       return "Equipe 3 (Noturno)"
+    default:
+      return equipe || "N/A"
   }
 }
 
@@ -149,7 +152,9 @@ const SolturaCard = ({ item, onPress }) => {
     <Pressable style={styles.solturaCard} onPress={onPress}>
       <View style={styles.solturaCardHeader}>
         <View style={styles.solturaCardHeaderLeft}>
-          <Text style={styles.solturaCardTitle}>{item.veiculo || "Sem veículo"}</Text>
+          <Text style={styles.solturaCardTitle}>
+            {item.prefixo || (item.veiculo && item.veiculo.prefixo) || "Sem veículo"}
+          </Text>
           <Text style={styles.solturaCardSubtitle}>{item.motorista || "Sem motorista"}</Text>
         </View>
         <View style={styles.solturaCardHeaderRight}>
@@ -168,14 +173,16 @@ const SolturaCard = ({ item, onPress }) => {
 
       <View style={styles.solturaCardContent}>
         <View style={styles.solturaCardRow}>
-          <Text style={styles.solturaCardLabel}>Data:</Text>
-          <Text style={styles.solturaCardValue}>{formatDateTime(item.data_soltura)}</Text>
-        </View>
-
-        <View style={styles.solturaCardRow}>
           <Text style={styles.solturaCardLabel}>Turno:</Text>
           <Text style={styles.solturaCardValue}>{item.turno || "N/A"}</Text>
         </View>
+
+        {item.rota && (
+          <View style={styles.solturaCardRow}>
+            <Text style={styles.solturaCardLabel}>Rota:</Text>
+            <Text style={styles.solturaCardValue}>{item.rota}</Text>
+          </View>
+        )}
 
         {item.garagem && (
           <View style={styles.solturaCardRow}>
@@ -196,6 +203,54 @@ const SolturaCard = ({ item, onPress }) => {
         <Text style={styles.viewMoreText}>Toque para ver detalhes</Text>
       </View>
     </Pressable>
+  )
+}
+
+// Search Input Component
+const SearchInput = ({ value, onChangeText, placeholder }) => {
+  const [isFocused, setIsFocused] = useState(false)
+  const borderColorAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(borderColorAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start()
+  }, [isFocused])
+
+  const borderColor = borderColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#ddd", "#4CAF50"],
+  })
+
+  return (
+    <Animated.View
+      style={[
+        styles.searchInputContainer,
+        {
+          borderColor,
+        },
+      ]}
+    >
+      <View style={styles.searchIconContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+      </View>
+      <TextInput
+        style={styles.searchInput}
+        placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        clearButtonMode="while-editing"
+      />
+      {value.length > 0 && (
+        <Pressable style={styles.clearButton} onPress={() => onChangeText("")}>
+          <Text style={styles.clearButtonText}>✕</Text>
+        </Pressable>
+      )}
+    </Animated.View>
   )
 }
 
@@ -275,8 +330,13 @@ const SolturaDetailModal = ({ visible, item, onClose }) => {
               <Text style={styles.modalSectionTitle}>Informações Gerais</Text>
 
               <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>Veículo:</Text>
-                <Text style={styles.modalValue}>{item.veiculo || "N/A"}</Text>
+                <Text style={styles.modalLabel}>Prefixo:</Text>
+                <Text style={styles.modalValue}>{item.prefixo || (item.veiculo && item.veiculo.prefixo) || "N/A"}</Text>
+              </View>
+
+              <View style={styles.modalRow}>
+                <Text style={styles.modalLabel}>Rota:</Text>
+                <Text style={styles.modalValue}>{item.rota || "N/A"}</Text>
               </View>
 
               <View style={styles.modalRow}>
@@ -285,21 +345,9 @@ const SolturaDetailModal = ({ visible, item, onClose }) => {
               </View>
 
               <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>Data:</Text>
-                <Text style={styles.modalValue}>{formatDateTime(item.data_soltura)}</Text>
-              </View>
-
-              <View style={styles.modalRow}>
                 <Text style={styles.modalLabel}>Turno:</Text>
                 <Text style={styles.modalValue}>{item.turno || "N/A"}</Text>
               </View>
-
-              {item.equipe && (
-                <View style={styles.modalRow}>
-                  <Text style={styles.modalLabel}>Equipe:</Text>
-                  <Text style={styles.modalValue}>{getEquipeLabel(item.equipe)}</Text>
-                </View>
-              )}
             </View>
 
             <View style={styles.modalSection}>
@@ -335,10 +383,10 @@ const SolturaDetailModal = ({ visible, item, onClose }) => {
                 </View>
               )}
 
-              {item.rotas && (
+              {item.rota && (
                 <View style={styles.modalRow}>
                   <Text style={styles.modalLabel}>Rota:</Text>
-                  <Text style={styles.modalValue}>{item.rotas}</Text>
+                  <Text style={styles.modalValue}>{item.rota}</Text>
                 </View>
               )}
 
@@ -360,6 +408,20 @@ const SolturaDetailModal = ({ visible, item, onClose }) => {
                     {Array.isArray(item.coletores) ? item.coletores.join(", ") : item.coletores}
                   </Text>
                 </View>
+
+                {item.nome_lider && (
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Líder:</Text>
+                    <Text style={styles.modalValue}>{item.nome_lider}</Text>
+                  </View>
+                )}
+
+                {item.telefone_lider && (
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Telefone Líder:</Text>
+                    <Text style={styles.modalValue}>{item.telefone_lider}</Text>
+                  </View>
+                )}
               </View>
             )}
           </ScrollView>
@@ -385,6 +447,7 @@ const FormularioHistorico = ({ navigation }) => {
   // State for filters
   const [tipoServico, setTipoServico] = useState("Todos")
   const [turno, setTurno] = useState("Todos")
+  const [searchQuery, setSearchQuery] = useState("")
 
   // State for data
   const [solturas, setSolturas] = useState([])
@@ -403,7 +466,7 @@ const FormularioHistorico = ({ navigation }) => {
 
   // Filter options
   const tiposServicoData = ["Todos", "Coleta", "Seletiva", "Varrição", "Remoção"]
-  const turnosData = ["Todos", "Diurno", "Noturno"]
+  const turnosData = ["Todos", "Matutino", "Vespertino", "Noturno"]
 
   // Get device dimensions
   const { width } = Dimensions.get("window")
@@ -420,7 +483,7 @@ const FormularioHistorico = ({ navigation }) => {
   // Apply filters when filter values change
   useEffect(() => {
     applyFilters()
-  }, [tipoServico, turno, solturas])
+  }, [tipoServico, turno, searchQuery, solturas])
 
   // Animate component entry
   useEffect(() => {
@@ -474,6 +537,17 @@ const FormularioHistorico = ({ navigation }) => {
       filtered = filtered.filter((item) => item.turno === turno)
     }
 
+    // Filter by search query (motorista or prefixo)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter((item) => {
+        const motorista = (item.motorista || "").toLowerCase()
+        const prefixo = (item.prefixo || (item.veiculo && item.veiculo.prefixo) || "").toLowerCase()
+
+        return motorista.includes(query) || prefixo.includes(query)
+      })
+    }
+
     setFilteredSolturas(filtered)
   }
 
@@ -487,6 +561,7 @@ const FormularioHistorico = ({ navigation }) => {
   const clearFilters = () => {
     setTipoServico("Todos")
     setTurno("Todos")
+    setSearchQuery("")
   }
 
   // Navigate back to form
@@ -585,6 +660,15 @@ const FormularioHistorico = ({ navigation }) => {
                 <FilterChip key={option} label={option} selected={turno === option} onPress={() => setTurno(option)} />
               ))}
             </View>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterSectionTitle}>Pesquisar</Text>
+            <SearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Buscar por motorista ou prefixo"
+            />
           </View>
         </View>
 
@@ -700,8 +784,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
     borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
+    padding: 16, // Reduced padding
+    marginBottom: 16, // Reduced margin
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -709,12 +793,13 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
+    maxHeight: "85%", // Increased max height
   },
   filtersContainer: {
-    marginBottom: 20,
+    marginBottom: 12, // Reduced margin
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-    paddingBottom: 15,
+    paddingBottom: 12, // Reduced padding
   },
   filtersSectionHeader: {
     flexDirection: "row",
@@ -739,13 +824,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   filterSection: {
-    marginBottom: 15,
+    marginBottom: 12, // Reduced margin
   },
   filterSectionTitle: {
-    fontSize: 16,
+    fontSize: 15, // Slightly smaller font
     fontWeight: "600",
     color: "#555",
-    marginBottom: 10,
+    marginBottom: 8, // Reduced margin
     paddingLeft: 5,
   },
   filterChipsContainer: {
@@ -760,12 +845,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   filterChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6, // Reduced padding
+    paddingHorizontal: 14, // Reduced padding
     borderRadius: 20,
     backgroundColor: "#f0f0f0",
-    marginRight: 10,
-    marginBottom: 10,
+    marginRight: 8, // Reduced margin
+    marginBottom: 8, // Reduced margin
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
@@ -782,8 +867,45 @@ const styles = StyleSheet.create({
     color: "#2E7D32",
     fontWeight: "bold",
   },
+  // Search input styles
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    paddingHorizontal: 12, // Reduced padding
+    height: 45, // Reduced height
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  searchIconContainer: {
+    marginRight: 10,
+  },
+  searchIcon: {
+    fontSize: 16,
+    color: "#666",
+  },
+  searchInput: {
+    flex: 1,
+    height: "100%",
+    fontSize: 16,
+    color: "#333",
+  },
+  clearButton: {
+    padding: 8,
+  },
+  clearButtonText: {
+    fontSize: 16,
+    color: "#999",
+    fontWeight: "bold",
+  },
   resultsContainer: {
     flex: 1,
+    maxHeight: "65%", // Ensure the list takes up more space
   },
   resultsHeader: {
     flexDirection: "row",
@@ -902,11 +1024,11 @@ const styles = StyleSheet.create({
   },
   backButton: {
     backgroundColor: "#2E7D32",
-    paddingVertical: 14,
+    paddingVertical: 12, // Reduced padding
     borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
+    marginTop: 12, // Reduced margin
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,

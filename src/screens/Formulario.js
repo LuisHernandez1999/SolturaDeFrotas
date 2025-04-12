@@ -22,8 +22,7 @@ import {
   Alert,
 } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { SolturaService } from "../api/visualizar"
-
+import { CriarSolturaService } from "../api/criar-soltura-service"
 
 const getDeviceType = () => {
   const { width, height } = Dimensions.get("window")
@@ -1493,9 +1492,9 @@ const EquipeSelector = ({ selectedEquipe, setSelectedEquipe, tipoServico, error,
 
   // Definição das equipes disponíveis
   const equipes = [
-    { id: 1, nome: "Equipe 1 (Matutino)", value: "matutino", periodo: "diurno" },
-    { id: 2, nome: "Equipe 2 (Vespertino)", value: "vespertino", periodo: "diurno" },
-    { id: 3, nome: "Equipe 3 (Noturno)", value: "noturno", periodo: "noturno" },
+    { id: 1, nome: "Equipe 1 (Matutino)", value: "matutino", periodo: "Matutino" },
+    { id: 2, nome: "Equipe 2 (Vespertino)", value: "vespertino", periodo: "Vespertino" },
+    { id: 3, nome: "Equipe 3 (Noturno)", value: "noturno", periodo: "Noturno" },
   ]
 
   useEffect(() => {
@@ -1524,8 +1523,10 @@ const EquipeSelector = ({ selectedEquipe, setSelectedEquipe, tipoServico, error,
     setSelectedEquipe(equipe.value)
 
     // Atualiza o turno automaticamente com base na equipe selecionada
-    if (equipe.periodo === "diurno") {
-      setTurno("Diurno")
+    if (equipe.periodo === "Matutino") {
+      setTurno("Matutino")
+    } else if (equipe.periodo === "Vespertino") {
+      setTurno("Vespertino")
     } else if (equipe.periodo === "noturno") {
       setTurno("Noturno")
     }
@@ -2123,41 +2124,55 @@ const Formulario = ({ navigation }) => {
   const isLandscape = orientation === "LANDSCAPE"
   const deviceType = getDeviceType()
   const isTablet = deviceType === "tablet"
-
   const [turno, setTurno] = useState("")
   const [tipoServico, setTipoServico] = useState("") // Changed from tipo_coleta to tipoServico
   const [garagem, setGaragem] = useState("")
   const [selectedEquipe, setSelectedEquipe] = useState("")
   // Remover o estado de selectedEquipes (array) e manter apenas o turno
 
-  const [turnosData] = useState(["Diurno", "Noturno"])
+  const [turnosData] = useState(["Matutino", "Vespertino", "Noturno"])
   const [tiposServicoData] = useState(["Coleta", "Seletiva", "Varrição", "Remoção"]) // Changed from tiposFrotaData to tiposServicoData
 
   // Atualiza os setores disponíveis com base no tipo de serviço, turno, frequência e garagem
   useEffect(() => {
     if (tipoServico === "Coleta" && turno && frequencia && garagem) {
-      // Obter os setores disponíveis com base nas regras de negócio para Coleta
-      const setoresDisponiveis = SolturaService.getRotasDisponiveis(tipoServico, turno, frequencia, garagem)
-      setSetoresData(setoresDisponiveis)
+      // For Coleta, get available sectors based on business rules
+      console.log("Fetching routes for Coleta with params:", { tipoServico, turno, frequencia, garagem })
+      const setoresDisponiveis = CriarSolturaService.getSetoresDisponiveis(tipoServico, turno, frequencia, garagem)
+      console.log("Available sectors for Coleta:", setoresDisponiveis)
 
-      // Limpa o setor selecionado se não estiver mais disponível
+      if (Array.isArray(setoresDisponiveis) && setoresDisponiveis.length > 0) {
+        setSetoresData(setoresDisponiveis)
+      } else {
+        console.warn("No sectors available for the selected parameters")
+        setSetoresData([])
+      }
+
+      // Clear selected sector if it's no longer available
       if (setor && !setoresDisponiveis.includes(setor)) {
         setSetor("")
       }
     } else if (tipoServico === "Coleta") {
-      // Se é coleta mas faltam parâmetros, limpa os setores
+      // If it's Coleta but parameters are missing, clear sectors
+      console.log("Missing parameters for Coleta. Required: turno, frequencia, garagem")
       setSetoresData([])
       setSetor("")
     } else if (tipoServico === "Seletiva" || tipoServico === "Varrição") {
-      // Para Seletiva e Varição, carrega todos os setores disponíveis sem filtrar
+      // For Seletiva and Varrição, load all available sectors without filtering
       try {
-        // Usar os setores originais da API sem aplicar regras de filtro
-        const outrosDados = SolturaService.getOutrosDados()
-        setSetoresData(outrosDados.setores || [])
+        // Use the original sectors from the API without applying filter rules
+        console.log("Loading sectors for Seletiva/Varrição")
+        CriarSolturaService.getOutrosDados().then((outrosDados) => {
+          console.log("Sectors for Seletiva/Varrição:", outrosDados.setores)
+          setSetoresData(outrosDados.setores || [])
+        })
       } catch (error) {
-        console.error("Erro ao carregar setores para Seletiva/Varrição:", error)
+        console.error("Error loading sectors for Seletiva/Varrição:", error)
         setSetoresData([])
       }
+    } else {
+      // For other service types or when no service type is selected
+      setSetoresData([])
     }
   }, [tipoServico, turno, frequencia, garagem])
 
@@ -2200,10 +2215,10 @@ const Formulario = ({ navigation }) => {
 
         // Buscar dados de diferentes endpoints em paralelo
         const [motoristasResponse, coletoresResponse, veiculosResponse, outrosDados] = await Promise.all([
-          SolturaService.getMotoristas(),
-          SolturaService.getColetores(),
-          SolturaService.getVeiculos(),
-          SolturaService.getOutrosDados(),
+          CriarSolturaService.getMotoristas(),
+          CriarSolturaService.getColetores(),
+          CriarSolturaService.getVeiculos(),
+          CriarSolturaService.getOutrosDados(),
         ])
 
         // Extrair nomes dos motoristas
@@ -2352,25 +2367,23 @@ const Formulario = ({ navigation }) => {
       // Preparar dados para envio
       const solturaData = {
         motorista: motorista,
-        prefixo: prefixo,
         coletores: coletores,
+        prefixo: prefixo,
         frequencia: tipoServico === "Remoção" ? "N/A" : frequencia,
         setor: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? setor : "N/A",
-        garagem: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? garagem : "N/A",
-        rota: tipoServico === "Coleta" || tipoServico === "Seletiva" || tipoServico === "Varrição" ? rota : "N/A",
-        celular: celular,
-        lideres: lideres,
-        hora_entrega_chave: SolturaService.formatTimeForAPI(horaEntregaChave),
-        hora_saida_frota: SolturaService.formatTimeForAPI(horaSaidaFrota),
-        turno: turno,
-        tipo_servico: tipoServico,
+        hora_entrega_chave: CriarSolturaService.formatTimeForAPI(horaEntregaChave),
+        hora_saida_frota: CriarSolturaService.formatTimeForAPI(horaSaidaFrota),
         nome_lideres: lideres,
         telefone_lider: celular,
-        equipe: selectedEquipe,
+        turno: turno,
+        tipo_servico: tipoServico,
+        tipo_equipe: selectedEquipe, // Ensure tipo_equipe is correctly passed
+        garagem: garagem,
+        rota: rota, // Ensure rota is correctly passed
       }
 
       // Enviar para a API
-      const response = await SolturaService.criarSoltura(solturaData)
+      const response = await CriarSolturaService.criarSoltura(solturaData)
       console.log("Resposta do servidor após envio:", response)
 
       // Mostrar mensagem de sucesso
@@ -2389,13 +2402,11 @@ const Formulario = ({ navigation }) => {
   const navigateToHistorico = () => {
     setShowHistoryLoading(true)
 
-
     setTimeout(() => {
       setShowHistoryLoading(false)
       navigation?.navigate("FormularioHistorico")
     }, 2500)
   }
-
 
   if (isLoading) {
     return (
@@ -2407,7 +2418,6 @@ const Formulario = ({ navigation }) => {
       </SafeAreaView>
     )
   }
-
 
   if (loadingError) {
     return (
@@ -2421,7 +2431,6 @@ const Formulario = ({ navigation }) => {
     )
   }
 
-
   const getFormWidth = () => {
     if (isTablet) {
       return isLandscape ? width * 0.9 : width * 0.8
@@ -2429,7 +2438,6 @@ const Formulario = ({ navigation }) => {
 
     return isLandscape ? width * 0.8 : width * 0.9
   }
-
 
   const getFormPadding = () => {
     const deviceType = getDeviceType()
@@ -2549,7 +2557,6 @@ const Formulario = ({ navigation }) => {
                       setTurno={setTurno}
                     />
 
-                   
                     <View style={styles.inputWrapper}>
                       <Animated.Text
                         style={{
@@ -2612,7 +2619,7 @@ const Formulario = ({ navigation }) => {
                       error={errors.garagem}
                       zIndex={8}
                       id="garagem"
-                      disabled={false} 
+                      disabled={false}
                     />
 
                     <Autocomplete
@@ -2820,7 +2827,7 @@ const Formulario = ({ navigation }) => {
                       error={errors.garagem}
                       zIndex={6}
                       id="garagem"
-                      disabled={false} 
+                      disabled={false}
                     />
 
                     <Autocomplete
@@ -2918,7 +2925,6 @@ const Formulario = ({ navigation }) => {
                 </View>
               </TouchableArea>
 
-
               <Ripple
                 style={[
                   styles.submitButton,
@@ -2941,7 +2947,6 @@ const Formulario = ({ navigation }) => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-
         <SolturaInfoModal
           visible={showConfirmationModal}
           onClose={() => setShowConfirmationModal(false)}
@@ -2950,10 +2955,8 @@ const Formulario = ({ navigation }) => {
           isConfirmation={true}
         />
 
-        
         <SuccessMessage visible={showSuccessMessage} onClose={() => setShowSuccessMessage(false)} />
 
-        
         <HistoryLoadingScreen visible={showHistoryLoading} onClose={() => setShowHistoryLoading(false)} />
       </SafeAreaView>
     </ActiveAutocompleteProvider>
@@ -2968,7 +2971,7 @@ const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
     backgroundColor: "#ffffff",
-    paddingTop: 0, 
+    paddingTop: 0,
   },
   backgroundContainer: {
     position: "absolute",
@@ -2989,7 +2992,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingBottom: 30,
     alignItems: "center",
-    paddingTop: 20, 
+    paddingTop: 20,
   },
   header: {
     width: "100%",
@@ -3082,7 +3085,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333",
-    fontSize: 16, 
+    fontSize: 16,
     fontWeight: "500",
   },
   clearButton: {

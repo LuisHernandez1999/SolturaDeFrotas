@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "http://192.168.0.103:8000/api"
+const BASE_URL = "http://192.168.0.53:8000/api"
 
 export const SolturaService = {
   getMotoristas: async () => {
@@ -77,7 +77,7 @@ export const SolturaService = {
   getTurnos: async () => {
     try {
       console.log("Buscando turnos...")
-      const turnosData = ["Diurno", "Noturno"]
+      const turnosData = ["Matutino","Vespertino" ,"Noturno"]
       console.log("Turnos recebidos:", turnosData)
       return turnosData
     } catch (error) {
@@ -202,7 +202,7 @@ export const SolturaService = {
       const response = await axios.post(`${BASE_URL}/soltura/criar/`, {
         motorista: solturaData.motorista,
         coletores: solturaData.coletores,
-        veiculo: solturaData.prefixo,
+        veiculo: { prefixo: solturaData.prefixo },
         frequencia: solturaData.frequencia,
         setor: solturaData.setor,
         hora_entrega_chave: solturaData.hora_entrega_chave,
@@ -211,8 +211,8 @@ export const SolturaService = {
         telefone_lider: solturaData.telefone_lider || "", // Envia vazio se não houver
         turno: solturaData.turno, // Novo campo para turno
         tipo_servico: solturaData.tipo_servico, // Novo campo para tipo de frota
-        garagem: solturaData.garagem || "", // Garagem selecionada
-        rota: solturaData.setor || "",
+        garagem: solturaData.garagem , // Garagem selecionada
+        rota: solturaData.rota,
         tipo_equipe: solturaData.tipo_equipe,  // A rota é o setor selecionado
       })
 
@@ -241,7 +241,7 @@ export const SolturaService = {
         headers: {
           "Content-Type": "application/json",
         },
-        withCredentials: true, // para autenticação via session/cookie
+        withCredentials: true,
       })
 
       console.log("Solturas do dia recebidas:", response.data)

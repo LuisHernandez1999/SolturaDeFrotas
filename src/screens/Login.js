@@ -824,8 +824,8 @@ export default function LoginScreen({ navigation }) {
           setTimeout(() => {
             setShowLoadingScreen(false)
             try {
-              navigation.navigate("Formulario")
-              console.log("Navigation to Formulario succeeded")
+              navigation.navigate("Menu")
+              console.log("Navigation to Menu succeeded")
             } catch (error) {
               console.log("Navigation failed:", error)
               setErrorToastMessage("Não foi possível navegar para o formulário. Tente novamente.")
