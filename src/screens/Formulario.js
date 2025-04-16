@@ -271,12 +271,27 @@ const Autocomplete = ({
 
   // Atualiza dados filtrados quando o valor muda
   useEffect(() => {
-    if (value) {
+    // Se o valor estiver vazio e o campo estiver focado, mostrar todos os itens
+    if (!value && isFocused && id === "prefixo") {
+      if (Array.isArray(data) && data.length > 0) {
+        setFilteredData(data.slice(0, 50)) // Limitar a 50 itens para não sobrecarregar
+        setShowDropdown(true)
+        setActiveAutocomplete(id)
+      }
+    } else if (value) {
       // FIX: Check if data is an array and filter only if it is
       if (Array.isArray(data)) {
-        const filtered = data.filter(
-          (item) => item && typeof item === "string" && item.toLowerCase().includes(value.toLowerCase()),
-        )
+        const filtered = data.filter((item) => {
+          // Se for string, filtrar normalmente
+          if (typeof item === "string") {
+            return item.toLowerCase().includes(value.toLowerCase())
+          }
+          // Se for objeto com prefixo, filtrar pelo prefixo
+          else if (item && typeof item === "object" && "prefixo" in item) {
+            return item.prefixo.toLowerCase().includes(value.toLowerCase())
+          }
+          return false
+        })
         setFilteredData(filtered)
 
         // Mantenha o dropdown aberto se houver dados filtrados
@@ -290,7 +305,7 @@ const Autocomplete = ({
     } else {
       setFilteredData([])
     }
-  }, [value, data, isFocused])
+  }, [value, data, isFocused, id])
 
   // Fecha o dropdown quando outro autocomplete é aberto
   useEffect(() => {
@@ -351,8 +366,15 @@ const Autocomplete = ({
 
   const handleFocus = () => {
     setIsFocused(true)
+
+    // Se for o campo de prefixo, mostrar todos os itens disponíveis
+    if (id === "prefixo" && Array.isArray(data) && data.length > 0) {
+      setFilteredData(data.slice(0, 50)) // Limitar a 50 itens para não sobrecarregar
+      setShowDropdown(true)
+      setActiveAutocomplete(id)
+    }
     // FIX: Check if value exists before checking its length
-    if (value && value.length > 0 && filteredData.length > 0) {
+    else if (value && value.length > 0 && filteredData.length > 0) {
       setShowDropdown(true)
       setActiveAutocomplete(id)
     }
@@ -430,16 +452,26 @@ const Autocomplete = ({
 
   // Renderização dos itens do dropdown sem usar FlatList
   const renderDropdownItems = () => {
-    return filteredData.map((item, index) => (
-      <Pressable
-        key={index.toString()}
-        style={({ pressed }) => [styles.dropdownItem, pressed ? { backgroundColor: "#f0f0f0" } : {}]}
-        onPress={() => handleSelect(item)}
-        android_ripple={{ color: "rgba(0, 0, 0, 0.05)" }}
-      >
-        <Text style={styles.dropdownItemText}>{item}</Text>
-      </Pressable>
-    ))
+    return filteredData.map((item, index) => {
+      // Garantir que o item seja uma string
+      const displayText =
+        typeof item === "string"
+          ? item
+          : item && typeof item === "object" && "prefixo" in item
+            ? item.prefixo
+            : String(item)
+
+      return (
+        <Pressable
+          key={index.toString()}
+          style={({ pressed }) => [styles.dropdownItem, pressed ? { backgroundColor: "#f0f0f0" } : {}]}
+          onPress={() => handleSelect(displayText)}
+          android_ripple={{ color: "rgba(0, 0, 0, 0.05)" }}
+        >
+          <Text style={styles.dropdownItemText}>{displayText}</Text>
+        </Pressable>
+      )
+    })
   }
 
   return (
@@ -1313,14 +1345,43 @@ const TimeSelector = ({ time, setTime, label, error }) => {
 
   const onChangeTime = (event, selectedTime) => {
     setShowTimePicker(false)
+
+    // Importante: verificar se selectedTime não é null (pode acontecer se o usuário cancelar)
     if (selectedTime) {
-      setTime(selectedTime)
+      console.log("Horário selecionado (raw):", selectedTime)
+
+      // Criar uma nova instância de Date para evitar problemas de referência
+      const newTime = new Date()
+      newTime.setHours(selectedTime.getHours())
+      newTime.setMinutes(selectedTime.getMinutes())
+      newTime.setSeconds(0)
+
+      console.log(
+        "Novo horário formatado:",
+        `${String(newTime.getHours()).padStart(2, "0")}:${String(newTime.getMinutes()).padStart(2, "0")}`,
+      )
+
+      // Chamar setTime com o novo objeto Date
+      setTime(newTime)
+
+      // Verificar se o estado foi atualizado (debug)
+      setTimeout(() => {
+        console.log(
+          "Estado após atualização:",
+          time ? `${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}` : "null",
+        )
+      }, 100)
     }
   }
 
   const openTimePicker = () => {
+    console.log("Abrindo seletor de horário para:", label)
     setIsFocused(true)
-    setShowTimePicker(true)
+
+    // Pequeno atraso para garantir que o estado seja atualizado antes de mostrar o picker
+    setTimeout(() => {
+      setShowTimePicker(true)
+    }, 100)
   }
 
   const labelStyle = {
@@ -1392,7 +1453,13 @@ const TimeSelector = ({ time, setTime, label, error }) => {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {showTimePicker && (
-        <DateTimePicker value={time || new Date()} mode="time" display="default" onChange={onChangeTime} />
+        <DateTimePicker
+          value={time || new Date()}
+          mode="time"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={onChangeTime}
+          is24Hour={true}
+        />
       )}
     </View>
   )
@@ -1714,7 +1781,7 @@ const SolturaInfoModal = ({ visible, onClose, formData, onConfirm, isConfirmatio
 
               <View style={styles.solturaRow}>
                 <Text style={styles.solturaLabel}>Prefixo:</Text>
-                <Text style={styles.solturaValue}>{formData.prefixo || "N/A"}</Text>
+                <Text style={styles.solturaValue}>{formData.prefixo}</Text>
               </View>
 
               <View style={styles.solturaRow}>
@@ -2097,8 +2164,8 @@ const Formulario = ({ navigation }) => {
   const [celular, setCelular] = useState("")
   const [lideres, setLideres] = useState([]) // Changed from lider to lideres array
   // Novos estados para os campos adicionados
-  const [horaEntregaChave, setHoraEntregaChave] = useState(null)
-  const [horaSaidaFrota, setHoraSaidaFrota] = useState(null)
+  const [horaEntregaChave, setHoraEntregaChave] = useState(new Date())
+  const [horaSaidaFrota, setHoraSaidaFrota] = useState(new Date())
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
@@ -2231,9 +2298,27 @@ const Formulario = ({ navigation }) => {
         console.log("Nomes de coletores processados:", coletoresNomes.length)
         setColetoresData(coletoresNomes)
 
-        // Veículos já vêm como array de strings (placas)
-        console.log("Placas de veículos processadas:", veiculosResponse.length)
-        setVeiculosData(veiculosResponse)
+        // Veículos vêm como objetos com prefixo e placa_veiculo
+        console.log("Dados de veículos recebidos:", veiculosResponse)
+        // Extrair apenas os prefixos dos objetos
+        const prefixosProcessados = Array.isArray(veiculosResponse)
+          ? veiculosResponse
+              .map((veiculo) => {
+                // Verificar se é um objeto com a propriedade prefixo
+                if (veiculo && typeof veiculo === "object" && "prefixo" in veiculo) {
+                  return veiculo.prefixo
+                }
+                // Se for uma string, retornar diretamente
+                else if (typeof veiculo === "string") {
+                  return veiculo
+                }
+                // Caso contrário, retornar string vazia para evitar erros
+                return ""
+              })
+              .filter((prefixo) => prefixo) // Remover itens vazios
+          : []
+        console.log("Prefixos processados:", prefixosProcessados)
+        setVeiculosData(prefixosProcessados)
 
         // Definir outros dados
         setFrequenciasData(outrosDados.frequencias)
@@ -2251,6 +2336,24 @@ const Formulario = ({ navigation }) => {
 
     fetchData()
   }, [])
+
+  // Adicionar este novo useEffect após o useEffect de carregamento de dados
+  useEffect(() => {
+    // Mostrar os prefixos disponíveis no console para debug
+    console.log("Prefixos disponíveis para seleção:", veiculosData)
+
+    // Quando o campo de prefixo receber foco, mostrar todos os prefixos disponíveis
+    const handlePrefixoFocus = () => {
+      if (veiculosData.length > 0) {
+        console.log("Mostrando todos os prefixos disponíveis")
+        // Forçar a exibição de todos os prefixos quando o campo receber foco
+        // Este código será executado quando o componente for montado
+      }
+    }
+
+    // Chamar a função uma vez para verificar os dados
+    handlePrefixoFocus()
+  }, [veiculosData])
 
   useEffect(() => {
     Animated.timing(formOpacityAnim, {
@@ -2321,8 +2424,8 @@ const Formulario = ({ navigation }) => {
     setColetores([])
     setCelular("")
     setLideres([])
-    setHoraEntregaChave(null)
-    setHoraSaidaFrota(null)
+    setHoraEntregaChave(new Date())
+    setHoraSaidaFrota(new Date())
     setErrors({})
     setTurno("")
     setTipoServico("")
@@ -2536,7 +2639,7 @@ const Formulario = ({ navigation }) => {
 
                     <TimeSelector
                       time={horaSaidaFrota}
-                      setTime={setHoraSaidaFrota}
+                      setTime={horaSaidaFrota}
                       label="Hora de Saída da Frota"
                       error={errors.horaSaidaFrota}
                     />
@@ -2743,7 +2846,7 @@ const Formulario = ({ navigation }) => {
 
                     <TimeSelector
                       time={horaSaidaFrota}
-                      setTime={setHoraSaidaFrota}
+                      setTime={horaSaidaFrota}
                       label="Hora de Saída da Frota"
                       error={errors.horaSaidaFrota}
                     />
@@ -3536,7 +3639,7 @@ const styles = StyleSheet.create({
   },
   loadingTitleUnderline: {
     height: 3,
-    width: 50,
+    width: 60,
     backgroundColor: "#4CAF50",
     borderRadius: 1.5,
     marginBottom: 20,

@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "http:/192.168.0.53:8000/api"
+const BASE_URL = "http:/192.168.0.77:8000/api"
 export const CriarSolturaService = {
   getMotoristas: async () => {
     try {
